@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,11 +23,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type phoneAuthFlowSender struct{ code string }
+type phoneAuthFlowSender struct {
+	mu   sync.Mutex
+	code string
+}
 
 func (s *phoneAuthFlowSender) Send(_ context.Context, message service.SMSMessage) (service.SMSSendResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.code = message.Params["code"]
 	return service.SMSSendResult{Code: "OK"}, nil
+}
+
+func (s *phoneAuthFlowSender) latestCode() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.code
 }
 
 func TestPhoneBindingFlowKeepsExistingAccountAndBalance(t *testing.T) {
