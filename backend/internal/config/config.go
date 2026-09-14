@@ -96,6 +96,7 @@ type Config struct {
 	UsageCleanup            UsageCleanupConfig            `mapstructure:"usage_cleanup"`
 	Concurrency             ConcurrencyConfig             `mapstructure:"concurrency"`
 	TokenRefresh            TokenRefreshConfig            `mapstructure:"token_refresh"`
+	SMS                     SMSConfig                     `mapstructure:"sms"`
 	RunMode                 string                        `mapstructure:"run_mode" yaml:"run_mode"`
 	Timezone                string                        `mapstructure:"timezone"` // e.g. "Asia/Shanghai", "UTC"
 	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
@@ -1657,6 +1658,22 @@ type TotpConfig struct {
 	EncryptionKeyConfigured bool `mapstructure:"-"`
 }
 
+type SMSConfig struct {
+	Enabled         bool              `mapstructure:"enabled"`
+	Provider        string            `mapstructure:"provider"` // aliyun
+	SignName        string            `mapstructure:"sign_name"`
+	TemplateCode    string            `mapstructure:"template_code"`
+	TemplateParams  map[string]string `mapstructure:"template_params"`
+	CodeLength      int               `mapstructure:"code_length"`
+	TTLSeconds      int               `mapstructure:"ttl_seconds"`
+	CooldownSeconds int               `mapstructure:"cooldown_seconds"`
+	MaxAttempts     int               `mapstructure:"max_attempts"`
+	PhoneHourLimit  int               `mapstructure:"phone_hour_limit"`
+	PhoneDayLimit   int               `mapstructure:"phone_day_limit"`
+	IPHourLimit     int               `mapstructure:"ip_hour_limit"`
+	GlobalDayLimit  int               `mapstructure:"global_day_limit"`
+}
+
 type TurnstileConfig struct {
 	Required bool `mapstructure:"required"`
 }
@@ -2273,6 +2290,21 @@ func setDefaults() {
 
 	// TOTP
 	viper.SetDefault("totp.encryption_key", "")
+
+	// SMS 默认配置
+	viper.SetDefault("sms.enabled", false)
+	viper.SetDefault("sms.provider", "aliyun")
+	viper.SetDefault("sms.sign_name", "")
+	viper.SetDefault("sms.template_code", "")
+	viper.SetDefault("sms.template_params", map[string]string{"code": "code", "ttl": "ttl_minutes"})
+	viper.SetDefault("sms.code_length", 6)
+	viper.SetDefault("sms.ttl_seconds", 300)
+	viper.SetDefault("sms.cooldown_seconds", 60)
+	viper.SetDefault("sms.max_attempts", 5)
+	viper.SetDefault("sms.phone_hour_limit", 5)
+	viper.SetDefault("sms.phone_day_limit", 10)
+	viper.SetDefault("sms.ip_hour_limit", 30)
+	viper.SetDefault("sms.global_day_limit", 1000)
 
 	// Default
 	// Admin credentials are created via the setup flow (web wizard / CLI / AUTO_SETUP).

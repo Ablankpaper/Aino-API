@@ -134,6 +134,12 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// GetIntegrationRedis returns the shared Redis client for integration tests
+// This is used by service-level integration tests that need Redis
+func GetIntegrationRedis() *redisclient.Client {
+	return integrationRedis
+}
+
 func dockerIsAvailable(ctx context.Context) bool {
 	cmd := exec.CommandContext(ctx, "docker", "info")
 	cmd.Env = os.Environ()

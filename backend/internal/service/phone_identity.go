@@ -1,7 +1,6 @@
 package service
 
 import (
-	"crypto/rand"
 	"fmt"
 	"regexp"
 	"strings"
