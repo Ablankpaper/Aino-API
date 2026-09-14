@@ -50,6 +50,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/desktop/captcha',
+    name: 'DesktopCaptcha',
+    component: () => import('@/views/auth/DesktopCaptchaView.vue'),
+    meta: {
+      requiresAuth: false,
+      isolatedPublic: true,
+      title: 'Captcha'
+    }
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('@/views/auth/RegisterView.vue'),
@@ -782,6 +792,12 @@ function isBackendModePublicRouteAllowed(path: string, hasPendingAuthSession: bo
 router.beforeEach(async (to, _from, next) => {
   // 开始导航加载状态
   navigationLoading.startNavigation()
+
+  if (to.meta.isolatedPublic === true) {
+    document.title = typeof to.meta.title === 'string' ? to.meta.title : 'Captcha'
+    next()
+    return
+  }
 
   const authStore = useAuthStore()
 

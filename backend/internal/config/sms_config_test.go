@@ -17,6 +17,7 @@ func validSMSConfigForTest() SMSConfig {
 		SignName:              "测试签名",
 		TemplateCode:          "SMS_123456",
 		TemplateParams:        map[string]string{"code": "code", "minutes": "ttl_minutes"},
+		TemplateVerified:      true,
 		RegionID:              "cn-hangzhou",
 		RequestTimeoutSeconds: 5,
 		CodeLength:            6,
@@ -43,6 +44,12 @@ func TestSMSConfigValidationRejectsEnabledConfigWithoutSecrets(t *testing.T) {
 func TestSMSConfigValidationRejectsFixedCodeLikeTemplateMapping(t *testing.T) {
 	cfg := validSMSConfigForTest()
 	cfg.TemplateParams = map[string]string{"code": "1234"}
+	require.Error(t, validateSMSConfig(cfg, "release"))
+}
+
+func TestSMSConfigValidationRequiresCodeAndTTLTemplateMappings(t *testing.T) {
+	cfg := validSMSConfigForTest()
+	cfg.TemplateParams = map[string]string{"code": "code"}
 	require.Error(t, validateSMSConfig(cfg, "release"))
 }
 

@@ -7,10 +7,11 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/alibabacloud-go/captcha-20230305 v1.1.3
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.13
+	github.com/alibabacloud-go/dysmsapi-20170525/v4 v4.1.3
 	github.com/alibabacloud-go/tea v1.3.13
+	github.com/alibabacloud-go/tea-utils/v2 v2.0.7
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/alitto/pond/v2 v2.6.2
-	github.com/aliyun/alibaba-cloud-sdk-go v1.63.107
 	github.com/andybalholm/brotli v1.2.0
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.10
@@ -72,7 +73,8 @@ require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
-	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
+	github.com/alibabacloud-go/endpoint-util v1.1.0 // indirect
+	github.com/alibabacloud-go/openapi-util v0.1.1 // indirect
 	github.com/aliyun/credentials-go v1.4.5 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
@@ -134,7 +136,6 @@ require (
 	github.com/hashicorp/hcl/v2 v2.18.1 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/icholy/digest v1.1.0 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
@@ -159,7 +160,6 @@ require (
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

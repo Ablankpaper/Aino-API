@@ -2,6 +2,7 @@ package admin
 
 import (
 	"log/slog"
+	"reflect"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -32,6 +33,9 @@ func (h *SettingHandler) auditSettingsUpdate(c *gin.Context, before *service.Sys
 
 func diffSettings(before *service.SystemSettings, after *service.SystemSettings, beforeAuthSourceDefaults *service.AuthSourceDefaultSettings, afterAuthSourceDefaults *service.AuthSourceDefaultSettings, req UpdateSettingsRequest) []string {
 	changed := make([]string, 0, 20)
+	if req.SMS != nil && !reflect.DeepEqual(before.SMS, after.SMS) {
+		changed = append(changed, "sms")
+	}
 	if before.RegistrationEnabled != after.RegistrationEnabled {
 		changed = append(changed, "registration_enabled")
 	}

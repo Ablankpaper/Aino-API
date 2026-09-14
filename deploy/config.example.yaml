@@ -89,6 +89,37 @@ webauthn:
   rp_origins: []
 
 # =============================================================================
+# SMS Verification Configuration
+# 短信验证配置
+# =============================================================================
+# Keep disabled until the Aliyun credentials, approved sign/template, variable
+# mapping, and a random HMAC secret of at least 32 bytes are configured.
+# 在配置阿里云凭据、审核通过的签名/模板、变量映射，以及至少 32 字节的随机 HMAC
+# 密钥前，请保持关闭。管理后台不会读取或回显以下密钥。
+sms:
+  enabled: false
+  provider: "aliyun"
+  access_key_id: ""
+  access_key_secret: ""
+  region_id: "cn-hangzhou"
+  sign_name: ""
+  template_code: ""
+  template_params:
+    code: "code"
+    ttl: "ttl_minutes"
+  template_verified: false
+  hmac_secret: ""
+  request_timeout_seconds: 5
+  code_length: 6
+  ttl_seconds: 300
+  cooldown_seconds: 60
+  max_attempts: 5
+  phone_hour_limit: 5
+  phone_day_limit: 10
+  ip_hour_limit: 30
+  global_day_limit: 1000
+
+# =============================================================================
 # Run Mode Configuration
 # 运行模式配置
 # =============================================================================

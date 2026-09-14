@@ -4,23 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/aliyun/alibaba-cloud-sdk-go/sdk"
-	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
-	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
+	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+	dysmsapi "github.com/alibabacloud-go/dysmsapi-20170525/v4/client"
+	util "github.com/alibabacloud-go/tea-utils/v2/service"
+	"github.com/alibabacloud-go/tea/dara"
+	"github.com/alibabacloud-go/tea/tea"
 )
 
 const defaultAliyunSMSRequestTimeout = 5 * time.Second
 
-type aliyunSMSClient interface {
-	SendSms(request *dysmsapi.SendSmsRequest) (*dysmsapi.SendSmsResponse, error)
-}
-
 // AliyunSMSSender implements SMSSender using Aliyun Dysmsapi
 type AliyunSMSSender struct {
-	client aliyunSMSClient
+	client  *dysmsapi.Client
+	timeout time.Duration
+}
+
+type contextAliyunHTTPClient struct {
+	ctx  context.Context
+	base dara.HttpClient
+}
+
+func (c *contextAliyunHTTPClient) Call(request *http.Request, transport *http.Transport) (*http.Response, error) {
+	request = request.WithContext(c.ctx)
+	if c.base != nil {
+		return c.base.Call(request, transport)
+	}
+	return (&http.Client{Transport: transport}).Do(request)
 }
 
 // NewAliyunSMSSender creates a new Aliyun SMS sender
@@ -29,8 +42,8 @@ func NewAliyunSMSSender(accessKeyID, accessKeySecret, regionID string) (*AliyunS
 }
 
 // NewAliyunSMSSenderWithOptions creates a sender with automatic retries
-// disabled.  A timeout is enforced by the SDK HTTP client so an ambiguous
-// network failure cannot silently submit a second SMS.
+// disabled. A total request timeout prevents an ambiguous network failure
+// from silently outliving the caller's verification request.
 func NewAliyunSMSSenderWithOptions(accessKeyID, accessKeySecret, regionID string, timeout time.Duration) (*AliyunSMSSender, error) {
 	accessKeyID = strings.TrimSpace(accessKeyID)
 	accessKeySecret = strings.TrimSpace(accessKeySecret)
@@ -41,23 +54,26 @@ func NewAliyunSMSSenderWithOptions(accessKeyID, accessKeySecret, regionID string
 	if timeout <= 0 {
 		timeout = defaultAliyunSMSRequestTimeout
 	}
-	sdkConfig := sdk.NewConfig().
-		WithAutoRetry(false).
-		WithMaxRetryTime(0).
-		WithScheme("HTTPS").
-		WithTimeout(timeout)
-	client, err := dysmsapi.NewClientWithOptions(
-		regionID,
-		sdkConfig,
-		credentials.NewAccessKeyCredential(accessKeyID, accessKeySecret),
-	)
+	timeoutMillis := int(timeout.Milliseconds())
+	client, err := dysmsapi.NewClient(&openapi.Config{
+		AccessKeyId:     tea.String(accessKeyID),
+		AccessKeySecret: tea.String(accessKeySecret),
+		RegionId:        tea.String(regionID),
+		Protocol:        tea.String("HTTPS"),
+		ConnectTimeout:  tea.Int(timeoutMillis),
+		ReadTimeout:     tea.Int(timeoutMillis),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create Aliyun client: %w", err)
 	}
+	return newAliyunSMSSenderWithClient(client, timeout), nil
+}
 
-	return &AliyunSMSSender{
-		client: client,
-	}, nil
+func newAliyunSMSSenderWithClient(client *dysmsapi.Client, timeout time.Duration) *AliyunSMSSender {
+	if timeout <= 0 {
+		timeout = defaultAliyunSMSRequestTimeout
+	}
+	return &AliyunSMSSender{client: client, timeout: timeout}
 }
 
 // Send sends an SMS message via Aliyun
@@ -75,35 +91,44 @@ func (s *AliyunSMSSender) Send(ctx context.Context, message SMSMessage) (SMSSend
 	if strings.TrimSpace(message.SignName) == "" || strings.TrimSpace(message.TemplateCode) == "" {
 		return SMSSendResult{}, fmt.Errorf("Aliyun SMS sign name and template code are required")
 	}
-	request := dysmsapi.CreateSendSmsRequest()
-	request.Scheme = "https"
-	request.PhoneNumbers = strings.TrimPrefix(normalizedPhone, "+86")
-	request.SignName = message.SignName
-	request.TemplateCode = message.TemplateCode
+	request := new(dysmsapi.SendSmsRequest).
+		SetPhoneNumbers(strings.TrimPrefix(normalizedPhone, "+86")).
+		SetSignName(message.SignName).
+		SetTemplateCode(message.TemplateCode)
 
 	// Serialize template parameters
 	paramsJSON, err := json.Marshal(message.Params)
 	if err != nil {
 		return SMSSendResult{}, fmt.Errorf("marshal template params: %w", err)
 	}
-	request.TemplateParam = string(paramsJSON)
+	request.SetTemplateParam(string(paramsJSON))
 
-	response, err := s.client.SendSms(request)
+	requestCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	client := *s.client
+	client.HttpClient = &contextAliyunHTTPClient{ctx: requestCtx, base: client.HttpClient}
+	timeoutMillis := int(s.timeout.Milliseconds())
+	runtime := new(util.RuntimeOptions).
+		SetAutoretry(false).
+		SetMaxAttempts(1).
+		SetConnectTimeout(timeoutMillis).
+		SetReadTimeout(timeoutMillis)
+	response, err := client.SendSmsWithOptions(request, runtime)
 	if err != nil {
 		return SMSSendResult{}, fmt.Errorf("send SMS: %w", err)
 	}
-	if response == nil {
+	if response == nil || response.Body == nil {
 		return SMSSendResult{}, fmt.Errorf("send SMS: empty provider response")
 	}
 
 	result := SMSSendResult{
-		Code:      response.Code,
-		RequestID: response.RequestId,
-		BizID:     response.BizId,
+		Code:      tea.StringValue(response.Body.Code),
+		RequestID: tea.StringValue(response.Body.RequestId),
+		BizID:     tea.StringValue(response.Body.BizId),
 	}
 
-	if response.Code != "OK" {
-		return result, fmt.Errorf("SMS provider rejected request: code=%s", response.Code)
+	if result.Code != "OK" {
+		return result, fmt.Errorf("SMS provider rejected request: code=%s", result.Code)
 	}
 
 	return result, nil

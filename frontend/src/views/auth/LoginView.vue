@@ -10,8 +10,8 @@
           {{ t('auth.signInToAccount') }}
         </p>
         <div v-if="phoneLoginEnabled" class="mx-auto mt-4 flex max-w-xs rounded-lg bg-gray-100 p-1 dark:bg-dark-800">
-          <button type="button" class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition" :class="loginMode === 'email' ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white' : 'text-gray-500 dark:text-dark-400'" @click="loginMode = 'email'">{{ t('auth.emailLabel') }}</button>
-          <button type="button" class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition" :class="loginMode === 'phone' ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white' : 'text-gray-500 dark:text-dark-400'" @click="loginMode = 'phone'">{{ t('auth.phoneLogin') }}</button>
+          <button data-testid="login-mode-email" type="button" class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition" :class="loginMode === 'email' ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white' : 'text-gray-500 dark:text-dark-400'" @click="loginMode = 'email'">{{ t('auth.emailLabel') }}</button>
+          <button data-testid="login-mode-phone" type="button" class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition" :class="loginMode === 'phone' ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white' : 'text-gray-500 dark:text-dark-400'" @click="loginMode = 'phone'">{{ t('auth.phoneLogin') }}</button>
         </div>
       </div>
       <!-- Login Form -->
@@ -85,22 +85,22 @@
         </div>
         </template>
 
-        <template v-else>
-          <div>
-            <label for="phone" class="input-label">{{ t('auth.phoneLabel') }}</label>
-            <div class="relative">
-              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">+86</div>
-              <input id="phone" v-model="phoneData.phone" type="tel" inputmode="numeric" autocomplete="tel" :disabled="authActionDisabled || phoneLoading" class="input pl-14" :placeholder="t('auth.phonePlaceholder')" />
-            </div>
-          </div>
-          <div>
-            <label for="phone-code" class="input-label">{{ t('auth.verificationCode') }}</label>
-            <div class="flex gap-2">
-              <input id="phone-code" v-model="phoneData.code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" :disabled="authActionDisabled || phoneLoading" class="input flex-1" :placeholder="t('auth.phoneCodePlaceholder', { length: phoneCodeLength })" />
-              <button type="button" class="btn btn-secondary shrink-0" :disabled="authActionDisabled || phoneLoading || phoneCountdown > 0 || !phoneData.phone.trim()" @click="sendPhoneVerificationCode">{{ phoneCountdown > 0 ? t('auth.resendCountdown', { countdown: phoneCountdown }) : t('auth.sendCode') }}</button>
-            </div>
-          </div>
-        </template>
+        <PhoneLoginForm
+          v-else
+          :disabled="phoneActionDisabled"
+          :code-length="phoneCodeLength"
+          :registration-enabled="phoneRegistrationEnabled"
+          :invitation-code-enabled="invitationCodeEnabled"
+          :promo-code-enabled="promoCodeEnabled"
+          :agreement-revision="loginAgreementRevision"
+          :agreement-accepted="agreementAccepted"
+          :get-captcha-proof="getPhoneCaptchaProof"
+          @busy="phoneLoading = $event"
+          @reset-captcha="resetCaptchaProof"
+          @authenticated="handlePhoneAuthenticated"
+          @requires-2fa="handlePhone2FARequired"
+          @use-existing-account="loginMode = 'email'"
+        />
 
         <!-- Turnstile Widget -->
         <div v-if="captchaEnabled">
@@ -123,6 +123,7 @@
 
         <!-- Submit Button -->
         <button
+          v-if="loginMode === 'email'"
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
           class="btn btn-primary w-full"
@@ -148,7 +149,7 @@
             ></path>
           </svg>
           <Icon v-else name="login" size="md" class="mr-2" />
-          {{ isLoading || phoneLoading ? t('auth.signingIn') : loginMode === 'phone' ? t('auth.phoneSignIn') : t('auth.signIn') }}
+          {{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}
         </button>
 
         <LoginAgreementPrompt
@@ -246,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
@@ -257,6 +258,7 @@ import WechatOAuthSection from '@/components/auth/WechatOAuthSection.vue'
 import EmailOAuthButtons from '@/components/auth/EmailOAuthButtons.vue'
 import LoginAgreementPrompt from '@/components/auth/LoginAgreementPrompt.vue'
 import TotpLoginModal from '@/components/auth/TotpLoginModal.vue'
+import PhoneLoginForm from '@/components/auth/PhoneLoginForm.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
 import { useAuthStore, useAppStore } from '@/stores'
@@ -265,7 +267,6 @@ import {
   getPublicSettings,
   isTotp2FARequired,
   isWeChatWebOAuthEnabled,
-  sendPhoneCode,
   startOAuthLogin,
   type OAuthLoginStart
 } from '@/api/auth'
@@ -292,10 +293,10 @@ const isLoading = ref<boolean>(false)
 const phoneLoading = ref<boolean>(false)
 const loginMode = ref<'email' | 'phone'>('email')
 const phoneLoginEnabled = ref<boolean>(false)
+const phoneRegistrationEnabled = ref<boolean>(false)
 const phoneCodeLength = ref<number>(6)
-const phoneCountdown = ref<number>(0)
-const phoneChallengeId = ref<string>('')
-let phoneCountdownTimer: ReturnType<typeof setInterval> | null = null
+const invitationCodeEnabled = ref<boolean>(false)
+const promoCodeEnabled = ref<boolean>(false)
 const passkeyLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
@@ -361,7 +362,6 @@ const formData = reactive({
   email: '',
   password: ''
 })
-const phoneData = reactive({ phone: '', code: '' })
 
 const errors = reactive({
   email: '',
@@ -379,6 +379,10 @@ const agreementGateActive = computed(
 
 const authActionDisabled = computed(
   () => isLoading.value || phoneLoading.value || passkeyLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
+)
+
+const phoneActionDisabled = computed(
+  () => isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
 )
 
 const showPasskeyLogin = computed(
@@ -417,7 +421,11 @@ onMounted(async () => {
     const settings = await getPublicSettings()
     registrationEnabled.value = settings.registration_enabled === true
     phoneLoginEnabled.value = settings.phone_login_enabled === true
+    phoneRegistrationEnabled.value = settings.phone_registration_enabled === true
     phoneCodeLength.value = settings.phone_code_length || 6
+    invitationCodeEnabled.value = settings.invitation_code_enabled === true
+    promoCodeEnabled.value = settings.promo_code_enabled === true
+    if (phoneLoginEnabled.value) loginMode.value = 'phone'
     turnstileEnabled.value = settings.turnstile_enabled
     turnstileSiteKey.value = settings.turnstile_site_key || ''
     tencentCaptchaEnabled.value = settings.tencent_captcha_enabled === true
@@ -594,81 +602,35 @@ function validateForm(): boolean {
 }
 
 function handleSubmit(): void {
-  if (loginMode.value === 'phone') {
-    void handlePhoneLogin()
-    return
-  }
+  if (loginMode.value === 'phone') return
   void handleLogin()
 }
 
-async function sendPhoneVerificationCode(): Promise<void> {
-  const phone = phoneData.phone.trim()
-  if (!/^1[3-9]\d{9}$/.test(phone.replace(/[\s()-]/g, ''))) {
-    appStore.showError(t('auth.invalidPhone'))
-    return
+async function getPhoneCaptchaProof(): Promise<ActionCaptchaRequestProof | null> {
+  if (actionCaptchaEnabled.value) {
+    const proof = await turnstileRef.value?.verifyAction()
+    if (!proof) return null
+    return tencentCaptchaEnabled.value
+      ? { tencent_captcha_ticket: proof.token, tencent_captcha_randstr: proof.randstr }
+      : { turnstile_token: proof.token }
   }
-  if (!(await acquireActionProof())) return
-  phoneLoading.value = true
-  try {
-    const result = await sendPhoneCode({
-      phone,
-      turnstile_token: turnstileEnabled.value || aliyunCaptchaEnabled.value ? turnstileToken.value : undefined,
-      tencent_captcha_ticket: tencentCaptchaEnabled.value ? turnstileToken.value : undefined,
-      tencent_captcha_randstr: tencentCaptchaEnabled.value ? tencentCaptchaRandstr.value : undefined
-    })
-    phoneChallengeId.value = result.challenge_id
-    phoneCountdown.value = result.retry_after || 60
-    if (phoneCountdownTimer) clearInterval(phoneCountdownTimer)
-    phoneCountdownTimer = setInterval(() => {
-      phoneCountdown.value = Math.max(0, phoneCountdown.value - 1)
-      if (phoneCountdown.value === 0 && phoneCountdownTimer) {
-        clearInterval(phoneCountdownTimer)
-        phoneCountdownTimer = null
-      }
-    }, 1000)
-    appStore.showSuccess(t('auth.phoneCodeSent'))
-  } catch (error: unknown) {
-    appStore.showError(extractI18nErrorMessage(error, t, 'auth.errors', t('auth.sendCodeFailed')))
-  } finally {
-    resetCaptchaProof()
-    phoneLoading.value = false
+  if (turnstileEnabled.value && !turnstileToken.value) {
+    appStore.showError(t('auth.completeVerification'))
+    return null
   }
+  return turnstileEnabled.value ? { turnstile_token: turnstileToken.value } : {}
 }
 
-async function handlePhoneLogin(): Promise<void> {
-  if (agreementGateActive.value) {
-    appStore.showWarning(t('legal.loginAgreementPrompt.loginRequiredWarning'))
-    if (loginAgreementMode.value !== 'checkbox') showAgreementModal.value = true
-    return
-  }
-  const phone = phoneData.phone.trim()
-  if (!/^1[3-9]\d{9}$/.test(phone.replace(/[\s()-]/g, ''))) {
-    appStore.showError(t('auth.invalidPhone'))
-    return
-  }
-  if (!phoneChallengeId.value || !phoneData.code.trim()) {
-    appStore.showError(t('auth.phoneCodeRequired'))
-    return
-  }
-  phoneLoading.value = true
-  try {
-    const { loginWithPhone } = authStore
-    const response = await loginWithPhone({ phone, challenge_id: phoneChallengeId.value, code: phoneData.code.trim(), register_if_new: true, agreement_revision: loginAgreementRevision.value || undefined })
-    if (isTotp2FARequired(response)) {
-      const totpResponse = response as TotpLoginResponse
-      totpTempToken.value = totpResponse.temp_token || ''
-      totpUserEmailMasked.value = totpResponse.user_phone_masked || totpResponse.user_email_masked || ''
-      show2FAModal.value = true
-      return
-    }
-    clearAllAffiliateReferralCodes()
-    appStore.showSuccess(t('auth.loginSuccess'))
-    await router.push((router.currentRoute.value.query.redirect as string) || '/dashboard')
-  } catch (error: unknown) {
-    appStore.showError(extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed')))
-  } finally {
-    phoneLoading.value = false
-  }
+async function handlePhoneAuthenticated(): Promise<void> {
+  clearAllAffiliateReferralCodes()
+  appStore.showSuccess(t('auth.loginSuccess'))
+  await router.push((router.currentRoute.value.query.redirect as string) || '/dashboard')
+}
+
+function handlePhone2FARequired(response: TotpLoginResponse): void {
+  totpTempToken.value = response.temp_token || ''
+  totpUserEmailMasked.value = response.user_phone_masked || response.user_email_masked || ''
+  show2FAModal.value = true
 }
 
 // ==================== Form Handlers ====================
@@ -845,9 +807,6 @@ function handle2FACancel(): void {
   totpUserEmailMasked.value = ''
 }
 
-onUnmounted(() => {
-  if (phoneCountdownTimer) clearInterval(phoneCountdownTimer)
-})
 </script>
 
 <style scoped>

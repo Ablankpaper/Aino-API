@@ -16,6 +16,30 @@ export interface DefaultSubscriptionSetting {
   validity_days: number;
 }
 
+export interface SMSEditableSettings {
+  enabled: boolean;
+  provider: string;
+  sign_name: string;
+  template_code: string;
+  template_params: Record<string, string>;
+  template_verified: boolean;
+  code_length: number;
+  ttl_seconds: number;
+  cooldown_seconds: number;
+  max_attempts: number;
+  phone_hour_limit: number;
+  phone_day_limit: number;
+  ip_hour_limit: number;
+  global_day_limit: number;
+}
+
+export interface SMSSettings extends SMSEditableSettings {
+  credentials_configured: boolean;
+  hmac_configured: boolean;
+  ready: boolean;
+  reason_code?: string;
+}
+
 // ── 平台限额类型 ──────────────────────────────────────────────────
 export type PlatformType = "anthropic" | "openai" | "gemini" | "antigravity" | "grok"
 export type QuotaWindowType = "daily" | "weekly" | "monthly"
@@ -398,6 +422,7 @@ export function deriveWeChatConnectStoredMode(
  * System settings interface
  */
 export interface SystemSettings {
+  sms?: SMSSettings;
   // Registration settings
   registration_enabled: boolean;
   email_verify_enabled: boolean;
@@ -749,6 +774,7 @@ export interface SystemSettings {
 }
 
 export interface UpdateSettingsRequest {
+  sms?: SMSEditableSettings;
   registration_enabled?: boolean;
   email_verify_enabled?: boolean;
   registration_email_suffix_whitelist?: string[];
@@ -1073,6 +1099,17 @@ export async function updateSettings(
     "/admin/settings",
     settings,
   );
+  return data;
+}
+
+export interface SendTestSMSResponse {
+  expires_in: number;
+  retry_after?: number;
+  delivery: string;
+}
+
+export async function sendTestSMS(request: { phone: string }): Promise<SendTestSMSResponse> {
+  const { data } = await apiClient.post<SendTestSMSResponse>("/admin/settings/send-test-sms", request);
   return data;
 }
 
@@ -1569,6 +1606,7 @@ export async function resetWebSearchUsage(payload: {
 export const settingsAPI = {
   getSettings,
   updateSettings,
+  sendTestSMS,
   testSmtpConnection,
   sendTestEmail,
   getEmailTemplates,

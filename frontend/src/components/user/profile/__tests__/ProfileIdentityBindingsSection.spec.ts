@@ -530,6 +530,33 @@ describe('ProfileIdentityBindingsSection', () => {
     expect(wrapper.get('[data-testid="profile-binding-email-input"]').exists()).toBe(true)
   })
 
+  it('uses one compact phone action to reveal the binding form', async () => {
+    const appStore = useAppStore()
+    appStore.cachedPublicSettings = {
+      phone_binding_enabled: true,
+      phone_code_length: 6,
+    } as any
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: {
+        user: createUser({ auth_bindings: { phone: { bound: false, can_bind: true } } }),
+        compact: true,
+        linuxdoEnabled: false,
+        oidcEnabled: false,
+        wechatEnabled: false,
+      },
+    })
+
+    expect(wrapper.find('[data-testid="profile-binding-phone-form"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="profile-binding-phone-action"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid="profile-binding-phone-toggle"]')).toHaveLength(1)
+
+    await wrapper.get('[data-testid="profile-binding-phone-toggle"]').trigger('click')
+
+    expect(wrapper.get('[data-testid="profile-binding-phone-form"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="profile-binding-phone-action"]').exists()).toBe(false)
+  })
+
   it('shows third-party binding details and unbinds a connected provider', async () => {
     userApiMocks.unbindAuthIdentity.mockResolvedValue(
       createUser({

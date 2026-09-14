@@ -59,7 +59,7 @@ type SMSSender interface {
 // PhoneCodeInput represents the input for requesting a phone verification code
 type PhoneCodeInput struct {
 	Phone           string
-	Purpose         string // login | bind_phone
+	Purpose         string // login | bind_phone | admin_test
 	UserID          int64  // 0 for login, actual user ID for binding
 	SessionFamilyID string
 	ClientIP        string
@@ -160,11 +160,12 @@ type StoredChallenge struct {
 
 // SMSService handles phone verification code generation and validation
 type SMSService struct {
-	sender SMSSender
-	cache  SMSCache
-	config SMSConfig
-	clock  func() time.Time
-	rand   io.Reader
+	settings *SettingService
+	sender   SMSSender
+	cache    SMSCache
+	config   SMSConfig
+	clock    func() time.Time
+	rand     io.Reader
 }
 
 // NewSMSService creates a new SMS service
@@ -188,6 +189,13 @@ func NewSMSService(sender SMSSender, cache SMSCache, config SMSConfig, now time.
 
 // RequestCode requests a verification code to be sent
 func (s *SMSService) RequestCode(ctx context.Context, input PhoneCodeInput) (*PhoneCodeChallenge, error) {
+	configured, err := s.configuredForRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if configured != s {
+		return configured.RequestCode(ctx, input)
+	}
 	if err := s.validateRequest(input); err != nil {
 		return nil, err
 	}
@@ -296,6 +304,13 @@ func (s *SMSService) RequestCode(ctx context.Context, input PhoneCodeInput) (*Ph
 
 // ConsumeCode validates and consumes a verification code
 func (s *SMSService) ConsumeCode(ctx context.Context, input PhoneCodeInput, challengeID, code string) (*PhoneCodeProof, error) {
+	configured, err := s.configuredForRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if configured != s {
+		return configured.ConsumeCode(ctx, input, challengeID, code)
+	}
 	if err := s.validateRequest(input); err != nil {
 		return nil, err
 	}
@@ -408,7 +423,7 @@ func (s *SMSService) validateRequest(input PhoneCodeInput) error {
 		if input.UserID != 0 {
 			return ErrPhoneAuthProof
 		}
-	case "bind_phone":
+	case "bind_phone", "admin_test":
 		if input.UserID <= 0 || strings.TrimSpace(input.SessionFamilyID) == "" {
 			return ErrPhoneAuthProof
 		}

@@ -244,6 +244,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyAllowUserViewErrorRequests,
 	}
 
+	keys = append(keys, smsSettingKeys...)
 	settings, err := s.settingRepo.GetMultiple(ctx, keys)
 	if err != nil {
 		return nil, fmt.Errorf("get public settings: %w", err)
@@ -305,10 +306,11 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	// nil config (as used by isolated tests and misconfigured wiring) fails
 	// closed. Registration remains separately controlled by the existing global
 	// registration switch; an SMS-capable server must not reopen registration.
-	phoneEnabled := s != nil && s.cfg != nil && s.cfg.SMS.Enabled
+	sms, smsErr := s.smsSettingsFromValues(settings)
+	phoneEnabled := smsErr == nil && sms.Ready
 	phoneCodeLength := 6
-	if phoneEnabled && s.cfg.SMS.CodeLength >= 4 && s.cfg.SMS.CodeLength <= 8 {
-		phoneCodeLength = s.cfg.SMS.CodeLength
+	if smsErr == nil && sms.CodeLength >= 4 && sms.CodeLength <= 8 {
+		phoneCodeLength = sms.CodeLength
 	}
 	phoneRegions := []string{"CN"}
 

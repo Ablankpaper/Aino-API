@@ -831,6 +831,44 @@ describe("admin SettingsView payment visible method controls", () => {
     );
   });
 
+  it("composes SMS policy into the existing settings save without credential fields", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      sms: {
+        enabled: false,
+        provider: "aliyun",
+        sign_name: "Fixture Sign",
+        template_code: "SMS_FIXTURE",
+        template_params: { code: "code", minutes: "ttl_minutes" },
+        template_verified: true,
+        code_length: 6,
+        ttl_seconds: 300,
+        cooldown_seconds: 60,
+        max_attempts: 5,
+        phone_hour_limit: 5,
+        phone_day_limit: 10,
+        ip_hour_limit: 30,
+        global_day_limit: 1000,
+        credentials_configured: true,
+        hmac_configured: true,
+        ready: false,
+        reason_code: "SMS_DISABLED",
+      },
+    });
+    const wrapper = mountView();
+    await flushPromises();
+    await openSecurityTab(wrapper);
+
+    await wrapper.get('[data-testid="sms-sign-name"]').setValue("Edited Sign");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    const payload = updateSettings.mock.calls.at(-1)?.[0];
+    expect(payload.sms).toMatchObject({ sign_name: "Edited Sign" });
+    expect(payload.sms).not.toHaveProperty("credentials_configured");
+    expect(payload.sms).not.toHaveProperty("hmac_configured");
+  });
+
   it("人机验证切换到腾讯天御并保存四项配置", async () => {
     const wrapper = mountView();
     await flushPromises();

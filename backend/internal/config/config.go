@@ -1667,6 +1667,7 @@ type SMSConfig struct {
 	SignName              string            `mapstructure:"sign_name"`
 	TemplateCode          string            `mapstructure:"template_code"`
 	TemplateParams        map[string]string `mapstructure:"template_params"`
+	TemplateVerified      bool              `mapstructure:"template_verified"`
 	HMACSecret            string            `mapstructure:"hmac_secret"`
 	RequestTimeoutSeconds int               `mapstructure:"request_timeout_seconds"`
 	CodeLength            int               `mapstructure:"code_length"`
@@ -1686,9 +1687,8 @@ func validateSMSConfig(c SMSConfig, serverMode string) error {
 	if !c.Enabled {
 		return nil
 	}
-	provider := strings.ToLower(strings.TrimSpace(c.Provider))
-	if provider != "aliyun" {
-		return fmt.Errorf("sms.provider must be aliyun")
+	if err := c.ValidatePolicy(); err != nil {
+		return err
 	}
 	if strings.TrimSpace(c.AccessKeyID) == "" || strings.TrimSpace(c.AccessKeySecret) == "" {
 		return fmt.Errorf("sms access key credentials are required when SMS is enabled")
@@ -1696,10 +1696,24 @@ func validateSMSConfig(c SMSConfig, serverMode string) error {
 	if len([]byte(strings.TrimSpace(c.HMACSecret))) < 32 {
 		return fmt.Errorf("sms.hmac_secret must be at least 32 bytes")
 	}
+	if !c.TemplateVerified {
+		return fmt.Errorf("sms.template_verified must confirm the approved template variables and validity period")
+	}
+	return nil
+}
+
+func (c SMSConfig) Validate(serverMode string) error {
+	return validateSMSConfig(c, serverMode)
+}
+
+func (c SMSConfig) ValidatePolicy() error {
+	if strings.ToLower(strings.TrimSpace(c.Provider)) != "aliyun" {
+		return fmt.Errorf("sms.provider must be aliyun")
+	}
 	if strings.TrimSpace(c.RegionID) == "" {
 		return fmt.Errorf("sms.region_id is required")
 	}
-	if strings.TrimSpace(c.SignName) == "" || strings.TrimSpace(c.TemplateCode) == "" {
+	if c.Enabled && (strings.TrimSpace(c.SignName) == "" || strings.TrimSpace(c.TemplateCode) == "") {
 		return fmt.Errorf("sms.sign_name and sms.template_code are required")
 	}
 	if c.CodeLength < 4 || c.CodeLength > 8 {
@@ -1720,10 +1734,8 @@ func validateSMSConfig(c SMSConfig, serverMode string) error {
 	if c.PhoneHourLimit < 1 || c.PhoneDayLimit < 1 || c.IPHourLimit < 1 || c.GlobalDayLimit < 1 {
 		return fmt.Errorf("sms rate limits must be positive")
 	}
-	if strings.EqualFold(strings.TrimSpace(serverMode), "release") && strings.EqualFold(strings.TrimSpace(c.Provider), "test") {
-		return fmt.Errorf("test SMS provider cannot be enabled in release mode")
-	}
 	hasCode := false
+	hasTTL := false
 	if len(c.TemplateParams) == 0 {
 		return fmt.Errorf("sms.template_params must include the approved code variable")
 	}
@@ -1735,12 +1747,16 @@ func validateSMSConfig(c SMSConfig, serverMode string) error {
 		case "code":
 			hasCode = true
 		case "ttl_minutes":
+			hasTTL = true
 		default:
 			return fmt.Errorf("sms.template_params contains an unsupported variable mapping")
 		}
 	}
 	if !hasCode {
 		return fmt.Errorf("sms.template_params must map one variable to code")
+	}
+	if !hasTTL {
+		return fmt.Errorf("sms.template_params must map one variable to ttl_minutes")
 	}
 	return nil
 }
@@ -2391,6 +2407,7 @@ func setDefaults() {
 	viper.SetDefault("sms.sign_name", "")
 	viper.SetDefault("sms.template_code", "")
 	viper.SetDefault("sms.template_params", map[string]string{"code": "code", "ttl": "ttl_minutes"})
+	viper.SetDefault("sms.template_verified", false)
 	viper.SetDefault("sms.hmac_secret", "")
 	viper.SetDefault("sms.request_timeout_seconds", 5)
 	viper.SetDefault("sms.code_length", 6)

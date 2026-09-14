@@ -12,7 +12,10 @@ import (
 
 // UserPhoneBindSendCodeRequest represents request to send phone binding code
 type UserPhoneBindSendCodeRequest struct {
-	Phone string `json:"phone" binding:"required"`
+	Phone                 string `json:"phone" binding:"required"`
+	TurnstileToken        string `json:"turnstile_token"`
+	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`
+	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
 }
 
 // UserPhoneBindSendCodeResponse represents phone binding code response
@@ -20,6 +23,7 @@ type UserPhoneBindSendCodeResponse struct {
 	ChallengeID string `json:"challenge_id"`
 	ExpiresIn   int    `json:"expires_in"`
 	RetryAfter  int    `json:"retry_after,omitempty"`
+	Delivery    string `json:"delivery"`
 }
 
 // UserPhoneBindRequest represents phone binding verification request
@@ -48,8 +52,16 @@ func (h *UserHandler) SendPhoneBindingCode(c *gin.Context) {
 		return
 	}
 
-	// Check if SMS service is configured
-	if h.authService == nil || h.authService.SMSService() == nil {
+	if h.authService == nil {
+		response.InternalError(c, "SMS service not configured")
+		return
+	}
+	proof := captchaProof(req.TurnstileToken, req.TencentCaptchaTicket, req.TencentCaptchaRandstr)
+	if err := h.authService.VerifyCaptcha(c.Request.Context(), proof, ip.GetClientIP(c)); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if h.authService.SMSService() == nil {
 		response.InternalError(c, "SMS service not configured")
 		return
 	}
@@ -73,6 +85,7 @@ func (h *UserHandler) SendPhoneBindingCode(c *gin.Context) {
 		ChallengeID: challenge.ID,
 		ExpiresIn:   challenge.ExpiresIn,
 		RetryAfter:  challenge.RetryAfter,
+		Delivery:    challenge.Delivery,
 	})
 }
 

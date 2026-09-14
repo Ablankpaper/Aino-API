@@ -55,11 +55,11 @@ func ProvideEmailQueueService(emailService *EmailService) *EmailQueueService {
 // ProvideSMSService adapts the deployment configuration to the service-level
 // SMS contract.  The zero time deliberately selects the live clock; tests can
 // continue to pass a fixed time through NewSMSService.
-func ProvideSMSService(cfg *config.Config, cache SMSCache, sender SMSSender) *SMSService {
+func ProvideSMSService(cfg *config.Config, cache SMSCache, sender SMSSender, settings *SettingService) *SMSService {
 	if cfg == nil {
 		return NewSMSService(sender, cache, SMSConfig{}, time.Time{}, nil)
 	}
-	return NewSMSService(sender, cache, SMSConfig{
+	svc := NewSMSService(sender, cache, SMSConfig{
 		Enabled:               cfg.SMS.Enabled,
 		Provider:              cfg.SMS.Provider,
 		SignName:              cfg.SMS.SignName,
@@ -76,6 +76,8 @@ func ProvideSMSService(cfg *config.Config, cache SMSCache, sender SMSSender) *SM
 		IPHourLimit:           cfg.SMS.IPHourLimit,
 		GlobalDayLimit:        cfg.SMS.GlobalDayLimit,
 	}, time.Time{}, nil)
+	svc.settings = settings
+	return svc
 }
 
 // ProvideAuthService wires the optional captcha providers and SMS service into AuthService while

@@ -17,6 +17,7 @@ import type {
   UserAffiliateDetail,
   AffiliateTransferResponse,
   PlatformQuotasResponse,
+  ActionCaptchaRequestProof,
 } from '@/types'
 
 /**
@@ -114,10 +115,15 @@ export interface PhoneBindingChallenge {
   challenge_id: string
   expires_in: number
   retry_after?: number
+  delivery: string
 }
 
-export async function sendPhoneBindingCode(phone: string): Promise<PhoneBindingChallenge> {
-  const { data } = await apiClient.post<PhoneBindingChallenge>('/user/account-bindings/phone/send-code', { phone })
+export interface PhoneBindingCodeRequest extends ActionCaptchaRequestProof {
+  phone: string
+}
+
+export async function sendPhoneBindingCode(request: PhoneBindingCodeRequest): Promise<PhoneBindingChallenge> {
+  const { data } = await apiClient.post<PhoneBindingChallenge>('/user/account-bindings/phone/send-code', request)
   return data
 }
 

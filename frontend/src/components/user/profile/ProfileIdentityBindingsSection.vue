@@ -146,50 +146,12 @@
                 </button>
               </div>
 
-              <div
-                v-if="item.provider === 'phone' && showPhoneForm"
+              <PhoneBindingForm
+                v-if="item.provider === 'phone' && item.canBind && showPhoneForm"
                 data-testid="profile-binding-phone-form"
-                class="grid gap-2 sm:grid-cols-[minmax(0,1.4fr)_auto]"
-              >
-                <input
-                  v-model.trim="phoneBindingForm.phone"
-                  data-testid="profile-binding-phone-input"
-                  type="tel"
-                  inputmode="numeric"
-                  autocomplete="tel"
-                  class="input"
-                  :placeholder="t('profile.authBindings.phonePlaceholder')"
-                  :disabled="isSendingPhoneCode || isBindingPhone"
-                />
-                <button
-                  data-testid="profile-binding-phone-send-code"
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  :disabled="isSendingPhoneCode || isBindingPhone || phoneCountdown > 0"
-                  @click="sendPhoneCode"
-                >
-                  {{ phoneCountdown > 0 ? t('auth.resendCountdown', { countdown: phoneCountdown }) : t('profile.authBindings.sendCodeAction') }}
-                </button>
-                <input
-                  v-model.trim="phoneBindingForm.code"
-                  data-testid="profile-binding-phone-code-input"
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="8"
-                  class="input"
-                  :placeholder="t('profile.authBindings.codePlaceholder')"
-                  :disabled="isBindingPhone"
-                />
-                <button
-                  data-testid="profile-binding-phone-submit"
-                  type="button"
-                  class="btn btn-primary btn-sm sm:col-span-2"
-                  :disabled="isBindingPhone"
-                  @click="bindPhone"
-                >
-                  {{ isBindingPhone ? t('common.loading') : t('profile.authBindings.confirmPhoneBindAction') }}
-                </button>
-              </div>
+                :code-length="phoneCodeLength"
+                @updated="handlePhoneUpdated"
+              />
             </div>
           </div>
 
@@ -208,7 +170,7 @@
               }}
             </button>
             <button
-              v-if="item.provider === 'phone' && compact"
+              v-if="item.provider === 'phone' && item.canBind && compact"
               data-testid="profile-binding-phone-toggle"
               type="button"
               class="btn btn-secondary btn-sm"
@@ -217,7 +179,7 @@
               {{ showPhoneForm ? t('profile.authBindings.hidePhoneFormAction') : t('profile.authBindings.managePhoneAction') }}
             </button>
             <button
-              v-if="item.canBind"
+              v-if="item.canBind && item.provider !== 'phone'"
               :data-testid="`profile-binding-${item.provider}-action`"
               type="button"
               class="btn btn-primary btn-sm"
@@ -247,7 +209,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
@@ -257,13 +219,12 @@ import {
 } from '@/api/auth'
 import {
   bindEmailIdentity,
-  bindPhoneIdentity,
-  sendPhoneBindingCode,
   sendEmailBindingCode,
   startOAuthBinding,
   unbindAuthIdentity,
 } from '@/api/user'
 import Icon from '@/components/icons/Icon.vue'
+import PhoneBindingForm from '@/components/user/profile/PhoneBindingForm.vue'
 import { useAppStore, useAuthStore } from '@/stores'
 import type { User, UserAuthBindingStatus, UserAuthProvider } from '@/types'
 
@@ -303,19 +264,14 @@ const authStore = useAuthStore()
 const localUser = ref<User | null>(null)
 const isSendingEmailCode = ref(false)
 const isBindingEmail = ref(false)
-const isSendingPhoneCode = ref(false)
-const isBindingPhone = ref(false)
 const isEmailFormExpanded = ref(!props.compact)
 const isPhoneFormExpanded = ref(!props.compact)
-const phoneCountdown = ref(0)
-let phoneCountdownTimer: ReturnType<typeof setInterval> | null = null
 const unbindingProvider = ref<BindableProvider | null>(null)
 const emailBindingForm = reactive({
   email: '',
   verifyCode: '',
   password: '',
 })
-const phoneBindingForm = reactive({ phone: '', code: '', challengeId: '' })
 
 watch(
   () => props.user,
@@ -343,6 +299,7 @@ watch(
 
 const currentUser = computed(() => localUser.value ?? props.user)
 const compact = computed(() => props.compact)
+const phoneCodeLength = computed(() => appStore.cachedPublicSettings?.phone_code_length || 6)
 const rowClass = computed(() =>
   props.embedded
     ? compact.value
@@ -743,59 +700,8 @@ async function bindEmail(): Promise<void> {
   }
 }
 
-async function sendPhoneCode(): Promise<void> {
-  const normalized = phoneBindingForm.phone.replace(/[\s()-]/g, '')
-  if (!/^1[3-9]\d{9}$/.test(normalized)) {
-    appStore.showError(t('auth.invalidPhone'))
-    return
-  }
-  isSendingPhoneCode.value = true
-  try {
-    const result = await sendPhoneBindingCode(phoneBindingForm.phone)
-    phoneBindingForm.challengeId = result.challenge_id
-    phoneCountdown.value = result.retry_after || 60
-    if (phoneCountdownTimer) clearInterval(phoneCountdownTimer)
-    phoneCountdownTimer = setInterval(() => {
-      phoneCountdown.value = Math.max(0, phoneCountdown.value - 1)
-      if (phoneCountdown.value === 0 && phoneCountdownTimer) {
-        clearInterval(phoneCountdownTimer)
-        phoneCountdownTimer = null
-      }
-    }, 1000)
-    appStore.showSuccess(t('profile.authBindings.phoneCodeSent'))
-  } catch (error) {
-    appStore.showError((error as { message?: string }).message || t('auth.sendCodeFailed'))
-  } finally {
-    isSendingPhoneCode.value = false
-  }
+function handlePhoneUpdated(user: User): void {
+  applyUpdatedUser(user)
+  isPhoneFormExpanded.value = false
 }
-
-async function bindPhone(): Promise<void> {
-  if (!phoneBindingForm.challengeId || !phoneBindingForm.code) {
-    appStore.showError(t('auth.phoneCodeRequired'))
-    return
-  }
-  isBindingPhone.value = true
-  try {
-    const user = await bindPhoneIdentity({
-      phone: phoneBindingForm.phone,
-      challenge_id: phoneBindingForm.challengeId,
-      code: phoneBindingForm.code,
-    })
-    applyUpdatedUser(user)
-    phoneBindingForm.code = ''
-    phoneBindingForm.challengeId = ''
-    phoneCountdown.value = 0
-    isPhoneFormExpanded.value = false
-    appStore.showSuccess(t('profile.authBindings.bindSuccess'))
-  } catch (error) {
-    appStore.showError((error as { message?: string }).message || t('common.tryAgain'))
-  } finally {
-    isBindingPhone.value = false
-  }
-}
-
-onUnmounted(() => {
-  if (phoneCountdownTimer) clearInterval(phoneCountdownTimer)
-})
 </script>

@@ -958,6 +958,7 @@ export default {
       managePhoneAction: '管理手机号',
       hidePhoneFormAction: '收起手机号表单',
       confirmPhoneBindAction: '绑定手机号',
+      reloginAction: '重新登录',
       source: {
         avatar: '头像当前来自 {providerName}',
         username: '昵称当前来自 {providerName}',

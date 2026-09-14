@@ -176,6 +176,31 @@ func TestSMSBindCodeCannotBeConsumedFromAnotherSession(t *testing.T) {
 	require.False(t, cache.challenge.Consumed, "a mismatched session must not consume the proof")
 }
 
+func TestSMSAdminTestPurposeUsesSenderButCannotAuthenticate(t *testing.T) {
+	sender := &smsTestSender{result: SMSSendResult{Code: "OK"}}
+	cache := &smsTestCache{}
+	svc := newSMSTestService(sender, cache)
+
+	challenge, err := svc.RequestCode(context.Background(), PhoneCodeInput{
+		Phone:           "13900000000",
+		Purpose:         "admin_test",
+		UserID:          7,
+		SessionFamilyID: "admin-session",
+		ClientIP:        "192.0.2.10",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "admin_test", cache.challenge.Purpose)
+
+	proof, err := svc.ConsumeCode(context.Background(), PhoneCodeInput{
+		Phone:    "13900000000",
+		Purpose:  "login",
+		ClientIP: "192.0.2.10",
+	}, challenge.ID, sender.message.Params["code"])
+	require.ErrorIs(t, err, ErrPhoneAuthProof)
+	require.Nil(t, proof)
+	require.False(t, cache.challenge.Consumed)
+}
+
 func TestNewSMSServiceUsesLiveClockWhenNowIsZero(t *testing.T) {
 	svc := NewSMSService(nil, nil, SMSConfig{Enabled: true, HMACSecret: "secret"}, time.Time{}, io.Reader(strings.NewReader("x")))
 	first := svc.clock()

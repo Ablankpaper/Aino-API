@@ -22,6 +22,7 @@ import (
 
 // UpdateSettingsRequest 更新设置请求
 type UpdateSettingsRequest struct {
+	SMS *service.SMSEditableSettings `json:"sms"`
 	// 注册设置
 	RegistrationEnabled                 bool                         `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                         `json:"email_verify_enabled"`
@@ -505,6 +506,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	previousAuthSourceDefaults, err := h.settingService.GetAuthSourceDefaultSettings(c.Request.Context())
 	if err != nil {
 		response.ErrorFrom(c, err)
+		return
+	}
+	if req.SMS != nil && !middleware.EnforceStepUpAlways(c, h.totpService, h.userService) {
 		return
 	}
 
@@ -1499,6 +1503,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 
 	settings := &service.SystemSettings{
+		SMS: req.SMS,
 		// 系统全局 platform quota 默认值（整体替换语义）
 		DefaultPlatformQuotas:       req.DefaultPlatformQuotas,
 		AccountSchedulingThresholds: req.AccountSchedulingThresholds,

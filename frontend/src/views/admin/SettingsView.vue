@@ -1423,6 +1423,7 @@
 
         <!-- Tab: Security — Registration, Turnstile, LinuxDo -->
         <div v-show="activeTab === 'security'" class="space-y-6">
+          <SmsSettingsSection v-if="form.sms" v-model="form.sms" />
           <!-- Registration Settings -->
           <div class="card">
             <div
@@ -8838,6 +8839,7 @@ import type {
   AuthSourceDefaultsState,
   AuthSourceType,
   SystemSettings,
+  SMSEditableSettings,
   UpdateSettingsRequest,
   DefaultSubscriptionSetting,
   DefaultPlatformQuotasMap,
@@ -8874,6 +8876,7 @@ import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
+import SmsSettingsSection from "@/components/admin/settings/SmsSettingsSection.vue";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
 import { useClipboard } from "@/composables/useClipboard";
 import {
@@ -9589,6 +9592,26 @@ type SettingsForm = Omit<
 const schedulingThresholdPlatforms = SCHEDULING_THRESHOLD_PLATFORMS;
 
 const form = reactive<SettingsForm>({
+  sms: {
+    enabled: false,
+    provider: "aliyun",
+    sign_name: "",
+    template_code: "",
+    template_params: { code: "code", ttl: "ttl_minutes" },
+    template_verified: false,
+    code_length: 6,
+    ttl_seconds: 300,
+    cooldown_seconds: 60,
+    max_attempts: 5,
+    phone_hour_limit: 5,
+    phone_day_limit: 10,
+    ip_hour_limit: 30,
+    global_day_limit: 1000,
+    credentials_configured: false,
+    hmac_configured: false,
+    ready: false,
+    reason_code: "SMS_DISABLED",
+  },
   registration_enabled: true,
   email_verify_enabled: false,
   registration_email_suffix_whitelist: [],
@@ -11241,6 +11264,39 @@ async function saveSettings() {
       claudeOAuthSystemPromptBlocksJSON;
 
     const payload: UpdateSettingsRequest = {
+      sms: form.sms
+        ? (({
+            enabled,
+            provider,
+            sign_name,
+            template_code,
+            template_params,
+            template_verified,
+            code_length,
+            ttl_seconds,
+            cooldown_seconds,
+            max_attempts,
+            phone_hour_limit,
+            phone_day_limit,
+            ip_hour_limit,
+            global_day_limit,
+          }) => ({
+            enabled,
+            provider,
+            sign_name,
+            template_code,
+            template_params,
+            template_verified,
+            code_length,
+            ttl_seconds,
+            cooldown_seconds,
+            max_attempts,
+            phone_hour_limit,
+            phone_day_limit,
+            ip_hour_limit,
+            global_day_limit,
+          } satisfies SMSEditableSettings))(form.sms)
+        : undefined,
       registration_enabled: form.registration_enabled,
       email_verify_enabled: form.email_verify_enabled,
       registration_email_suffix_whitelist:

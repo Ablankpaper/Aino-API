@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -187,7 +188,7 @@ func ProvideSMSCache(rdb *redis.Client) service.SMSCache {
 // valid startup state, so a no-op sender is returned until an operator enables
 // the feature with complete credentials.
 func ProvideSMSSender(cfg *config.Config) (service.SMSSender, error) {
-	if cfg == nil || !cfg.SMS.Enabled {
+	if cfg == nil || strings.TrimSpace(cfg.SMS.AccessKeyID) == "" || strings.TrimSpace(cfg.SMS.AccessKeySecret) == "" {
 		return disabledSMSSender{}, nil
 	}
 	if cfg.SMS.Provider != "aliyun" {

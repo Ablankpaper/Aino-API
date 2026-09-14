@@ -13,6 +13,9 @@ declare module 'vue-router' {
      */
     requiresAuth?: boolean
 
+    /** Whether the route bypasses the normal authenticated application shell. */
+    isolatedPublic?: boolean
+
     /**
      * Whether this route requires admin role
      * @default false

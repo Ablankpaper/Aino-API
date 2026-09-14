@@ -115,4 +115,21 @@ describe('LoginView registration entry', () => {
 
     expect(wrapper.text()).not.toContain('auth.signUp')
   })
+
+  it('prefers phone when service capability is enabled while retaining email mode', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({
+      ...publicSettings,
+      phone_login_enabled: true,
+      phone_registration_enabled: true,
+      phone_code_length: 6
+    })
+
+    const wrapper = mountLogin()
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'PhoneLoginForm' }).exists()).toBe(true)
+    expect(wrapper.find('#email').exists()).toBe(false)
+    await wrapper.get('[data-testid="phone-login-existing-account"]').trigger('click')
+    expect(wrapper.find('#email').exists()).toBe(true)
+  })
 })

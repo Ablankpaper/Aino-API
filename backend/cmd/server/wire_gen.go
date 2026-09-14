@@ -49,18 +49,18 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	redeemCodeRepository := repository.NewRedeemCodeRepository(client)
 	redisClient := repository.ProvideRedis(configConfig)
 	refreshTokenCache := repository.NewRefreshTokenCache(redisClient)
-	smsCache := repository.ProvideSMSCache(redisClient)
-	smsSender, err := repository.ProvideSMSSender(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	smsService := service.ProvideSMSService(configConfig, smsCache, smsSender)
 	settingRepository := repository.NewSettingRepository(client)
 	groupRepository := repository.NewGroupRepository(client, db)
 	proxyRepository := repository.NewProxyRepository(client, db)
 	settingService := service.ProvideSettingService(settingRepository, groupRepository, proxyRepository, configConfig)
 	emailCache := repository.NewEmailCache(redisClient)
 	emailService := service.NewEmailService(settingRepository, emailCache)
+	smsCache := repository.ProvideSMSCache(redisClient)
+	smsSender, err := repository.ProvideSMSSender(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	smsService := service.ProvideSMSService(configConfig, smsCache, smsSender, settingService)
 	turnstileVerifier := repository.NewTurnstileVerifier()
 	turnstileService := service.NewTurnstileService(settingService, turnstileVerifier)
 	tencentCaptchaVerifier := repository.NewTencentCaptchaVerifier()
@@ -103,7 +103,6 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	userAttributeService := service.NewUserAttributeService(userAttributeDefinitionRepository, userAttributeValueRepository)
 	authHandler := handler.NewAuthHandler(configConfig, authService, userService, settingService, promoService, redeemService, totpService, userAttributeService)
 	userHandler := handler.NewUserHandler(userService, authService, emailService, emailCache, affiliateService, serviceUserPlatformQuotaRepository)
-	userHandler.SetStepUpDependencies(totpService, settingService)
 	apiKeyHandler := handler.NewAPIKeyHandler(apiKeyService)
 	usageLogRepository := repository.NewUsageLogRepository(client, db)
 	usageService := service.NewUsageService(usageLogRepository, userRepository, client, apiKeyAuthCacheInvalidator)
@@ -243,7 +242,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	registry := payment.ProvideRegistry()
 	defaultLoadBalancer := payment.ProvideDefaultLoadBalancer(client, encryptionKey)
 	paymentService := service.ProvidePaymentService(client, registry, defaultLoadBalancer, redeemService, subscriptionService, paymentConfigService, userRepository, groupRepository, affiliateService, notificationEmailService)
-	settingHandler := handler.ProvideAdminSettingHandler(settingService, emailService, turnstileService, aliyunCaptchaService, opsService, paymentConfigService, paymentService, userAttributeService, notificationEmailService, totpService, userService)
+	settingHandler := handler.ProvideAdminSettingHandler(settingService, emailService, smsService, turnstileService, aliyunCaptchaService, opsService, paymentConfigService, paymentService, userAttributeService, notificationEmailService, totpService, userService)
 	opsHandler := admin.NewOpsHandler(opsService)
 	updateCache := repository.NewUpdateCache(redisClient)
 	gitHubReleaseClient := repository.ProvideGitHubReleaseClient(configConfig)

@@ -954,6 +954,7 @@ export default {
       managePhoneAction: 'Manage phone',
       hidePhoneFormAction: 'Hide phone form',
       confirmPhoneBindAction: 'Bind phone',
+      reloginAction: 'Sign in again',
       source: {
         avatar: 'Avatar is currently synced from {providerName}',
         username: 'Nickname is currently synced from {providerName}',

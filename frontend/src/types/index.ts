@@ -81,6 +81,7 @@ export interface User {
   auth_bindings?: Partial<Record<UserAuthProvider, boolean | UserAuthBindingStatus>>
   identity_bindings?: Partial<Record<UserAuthProvider, boolean | UserAuthBindingStatus>>
   email_bound?: boolean
+  phone_bound?: boolean
   linuxdo_bound?: boolean
   oidc_bound?: boolean
   wechat_bound?: boolean

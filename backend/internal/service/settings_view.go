@@ -12,6 +12,7 @@ func firstNonEmpty(values ...string) string {
 }
 
 type SystemSettings struct {
+	SMS                                 *SMSEditableSettings
 	RegistrationEnabled                 bool
 	EmailVerifyEnabled                  bool
 	RegistrationEmailSuffixWhitelist    []string

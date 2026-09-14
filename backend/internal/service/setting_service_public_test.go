@@ -171,13 +171,9 @@ func TestSettingService_GetPublicSettings_ExposesPhoneCapabilityWithoutSecrets(t
 	repo := &settingPublicRepoStub{values: map[string]string{
 		SettingKeyRegistrationEnabled: "true",
 	}}
-	svc := NewSettingService(repo, &config.Config{SMS: config.SMSConfig{
-		Enabled:         true,
-		CodeLength:      6,
-		AccessKeyID:     "must-not-be-exposed",
-		AccessKeySecret: "must-not-be-exposed",
-		HMACSecret:      "must-not-be-exposed",
-	}})
+	cfg := smsSettingsFixture()
+	cfg.SMS.Enabled = true
+	svc := NewSettingService(repo, cfg)
 
 	settings, err := svc.GetPublicSettings(context.Background())
 	require.NoError(t, err)
