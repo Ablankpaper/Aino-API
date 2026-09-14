@@ -76,6 +76,12 @@ type SystemSettings struct {
 	APIKeyACLTrustForwardedIP              bool     `json:"api_key_acl_trust_forwarded_ip"`
 	ForwardedClientIPHeaders               []string `json:"forwarded_client_ip_headers"`
 
+	PhoneLoginEnabled        bool     `json:"phone_login_enabled"`
+	PhoneRegistrationEnabled bool     `json:"phone_registration_enabled"`
+	PhoneBindingEnabled      bool     `json:"phone_binding_enabled"`
+	PhoneRegions             []string `json:"phone_regions"`
+	PhoneCodeLength          int      `json:"phone_code_length"`
+
 	LinuxDoConnectEnabled                bool   `json:"linuxdo_connect_enabled"`
 	LinuxDoConnectClientID               string `json:"linuxdo_connect_client_id"`
 	LinuxDoConnectClientSecretConfigured bool   `json:"linuxdo_connect_client_secret_configured"`
@@ -358,6 +364,11 @@ type DefaultSubscriptionSetting struct {
 
 type PublicSettings struct {
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
+	PhoneLoginEnabled                   bool                     `json:"phone_login_enabled"`
+	PhoneRegistrationEnabled            bool                     `json:"phone_registration_enabled"`
+	PhoneBindingEnabled                 bool                     `json:"phone_binding_enabled"`
+	PhoneRegions                        []string                 `json:"phone_regions"`
+	PhoneCodeLength                     int                      `json:"phone_code_length"`
 	EmailVerifyEnabled                  bool                     `json:"email_verify_enabled"`
 	ForceEmailOnThirdPartySignup        bool                     `json:"force_email_on_third_party_signup"`
 	RegistrationEmailSuffixWhitelist    []string                 `json:"registration_email_suffix_whitelist"`

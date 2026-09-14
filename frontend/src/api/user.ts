@@ -110,6 +110,26 @@ export async function bindEmailIdentity(payload: {
   return data
 }
 
+export interface PhoneBindingChallenge {
+  challenge_id: string
+  expires_in: number
+  retry_after?: number
+}
+
+export async function sendPhoneBindingCode(phone: string): Promise<PhoneBindingChallenge> {
+  const { data } = await apiClient.post<PhoneBindingChallenge>('/user/account-bindings/phone/send-code', { phone })
+  return data
+}
+
+export async function bindPhoneIdentity(payload: {
+  phone: string
+  challenge_id: string
+  code: string
+}): Promise<User> {
+  const { data } = await apiClient.post<{ user: User }>('/user/account-bindings/phone', payload)
+  return data.user
+}
+
 export async function unbindAuthIdentity(provider: BindableOAuthProvider): Promise<User> {
   const { data } = await apiClient.delete<User>(`/user/account-bindings/${provider}`)
   return data
@@ -204,6 +224,8 @@ export const userAPI = {
   toggleNotifyEmail,
   sendEmailBindingCode,
   bindEmailIdentity,
+  sendPhoneBindingCode,
+  bindPhoneIdentity,
   unbindAuthIdentity,
   buildOAuthBindingStartURL,
   startOAuthBinding,

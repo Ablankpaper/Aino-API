@@ -942,6 +942,7 @@ export default {
       },
       providers: {
         email: '邮箱',
+        phone: '手机号',
         linuxdo: 'LinuxDo',
         dingtalk: '钉钉',
         oidc: '{providerName}',
@@ -952,6 +953,11 @@ export default {
         canUnbind: '你可以解绑这个登录方式。',
         bindAnotherBeforeUnbind: '请先绑定其他登录方式，再解除当前绑定。',
       },
+      phonePlaceholder: '输入中国大陆手机号',
+      phoneCodeSent: '验证码已发送到手机',
+      managePhoneAction: '管理手机号',
+      hidePhoneFormAction: '收起手机号表单',
+      confirmPhoneBindAction: '绑定手机号',
       source: {
         avatar: '头像当前来自 {providerName}',
         username: '昵称当前来自 {providerName}',

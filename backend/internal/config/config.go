@@ -1659,19 +1659,103 @@ type TotpConfig struct {
 }
 
 type SMSConfig struct {
-	Enabled         bool              `mapstructure:"enabled"`
-	Provider        string            `mapstructure:"provider"` // aliyun
-	SignName        string            `mapstructure:"sign_name"`
-	TemplateCode    string            `mapstructure:"template_code"`
-	TemplateParams  map[string]string `mapstructure:"template_params"`
-	CodeLength      int               `mapstructure:"code_length"`
-	TTLSeconds      int               `mapstructure:"ttl_seconds"`
-	CooldownSeconds int               `mapstructure:"cooldown_seconds"`
-	MaxAttempts     int               `mapstructure:"max_attempts"`
-	PhoneHourLimit  int               `mapstructure:"phone_hour_limit"`
-	PhoneDayLimit   int               `mapstructure:"phone_day_limit"`
-	IPHourLimit     int               `mapstructure:"ip_hour_limit"`
-	GlobalDayLimit  int               `mapstructure:"global_day_limit"`
+	Enabled               bool              `mapstructure:"enabled"`
+	Provider              string            `mapstructure:"provider"` // aliyun
+	AccessKeyID           string            `mapstructure:"access_key_id"`
+	AccessKeySecret       string            `mapstructure:"access_key_secret"`
+	RegionID              string            `mapstructure:"region_id"`
+	SignName              string            `mapstructure:"sign_name"`
+	TemplateCode          string            `mapstructure:"template_code"`
+	TemplateParams        map[string]string `mapstructure:"template_params"`
+	HMACSecret            string            `mapstructure:"hmac_secret"`
+	RequestTimeoutSeconds int               `mapstructure:"request_timeout_seconds"`
+	CodeLength            int               `mapstructure:"code_length"`
+	TTLSeconds            int               `mapstructure:"ttl_seconds"`
+	CooldownSeconds       int               `mapstructure:"cooldown_seconds"`
+	MaxAttempts           int               `mapstructure:"max_attempts"`
+	PhoneHourLimit        int               `mapstructure:"phone_hour_limit"`
+	PhoneDayLimit         int               `mapstructure:"phone_day_limit"`
+	IPHourLimit           int               `mapstructure:"ip_hour_limit"`
+	GlobalDayLimit        int               `mapstructure:"global_day_limit"`
+}
+
+// validateSMSConfig validates the complete server-side SMS configuration.
+// Secrets are intentionally only checked for presence/strength; they are never
+// included in errors or public settings responses.
+func validateSMSConfig(c SMSConfig, serverMode string) error {
+	if !c.Enabled {
+		return nil
+	}
+	provider := strings.ToLower(strings.TrimSpace(c.Provider))
+	if provider != "aliyun" {
+		return fmt.Errorf("sms.provider must be aliyun")
+	}
+	if strings.TrimSpace(c.AccessKeyID) == "" || strings.TrimSpace(c.AccessKeySecret) == "" {
+		return fmt.Errorf("sms access key credentials are required when SMS is enabled")
+	}
+	if len([]byte(strings.TrimSpace(c.HMACSecret))) < 32 {
+		return fmt.Errorf("sms.hmac_secret must be at least 32 bytes")
+	}
+	if strings.TrimSpace(c.RegionID) == "" {
+		return fmt.Errorf("sms.region_id is required")
+	}
+	if strings.TrimSpace(c.SignName) == "" || strings.TrimSpace(c.TemplateCode) == "" {
+		return fmt.Errorf("sms.sign_name and sms.template_code are required")
+	}
+	if c.CodeLength < 4 || c.CodeLength > 8 {
+		return fmt.Errorf("sms.code_length must be between 4 and 8")
+	}
+	if c.TTLSeconds < 30 || c.TTLSeconds > 1800 {
+		return fmt.Errorf("sms.ttl_seconds must be between 30 and 1800")
+	}
+	if c.RequestTimeoutSeconds < 1 || c.RequestTimeoutSeconds > 30 {
+		return fmt.Errorf("sms.request_timeout_seconds must be between 1 and 30")
+	}
+	if c.CooldownSeconds < 1 || c.CooldownSeconds > 3600 {
+		return fmt.Errorf("sms.cooldown_seconds must be between 1 and 3600")
+	}
+	if c.MaxAttempts < 1 || c.MaxAttempts > 20 {
+		return fmt.Errorf("sms.max_attempts must be between 1 and 20")
+	}
+	if c.PhoneHourLimit < 1 || c.PhoneDayLimit < 1 || c.IPHourLimit < 1 || c.GlobalDayLimit < 1 {
+		return fmt.Errorf("sms rate limits must be positive")
+	}
+	if strings.EqualFold(strings.TrimSpace(serverMode), "release") && strings.EqualFold(strings.TrimSpace(c.Provider), "test") {
+		return fmt.Errorf("test SMS provider cannot be enabled in release mode")
+	}
+	hasCode := false
+	if len(c.TemplateParams) == 0 {
+		return fmt.Errorf("sms.template_params must include the approved code variable")
+	}
+	for name, semantic := range c.TemplateParams {
+		if !validSMSTemplateVariable(name) {
+			return fmt.Errorf("sms.template_params contains an invalid variable name")
+		}
+		switch strings.ToLower(strings.TrimSpace(semantic)) {
+		case "code":
+			hasCode = true
+		case "ttl_minutes":
+		default:
+			return fmt.Errorf("sms.template_params contains an unsupported variable mapping")
+		}
+	}
+	if !hasCode {
+		return fmt.Errorf("sms.template_params must map one variable to code")
+	}
+	return nil
+}
+
+func validSMSTemplateVariable(value string) bool {
+	if len(value) == 0 || len(value) > 32 {
+		return false
+	}
+	for i, r := range value {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (i > 0 && r >= '0' && r <= '9') || (i > 0 && r == '_') {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 type TurnstileConfig struct {
@@ -1863,6 +1947,13 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	}
 	cfg.Server.FrontendURL = strings.TrimSpace(cfg.Server.FrontendURL)
 	cfg.JWT.Secret = strings.TrimSpace(cfg.JWT.Secret)
+	cfg.SMS.Provider = strings.ToLower(strings.TrimSpace(cfg.SMS.Provider))
+	cfg.SMS.AccessKeyID = strings.TrimSpace(cfg.SMS.AccessKeyID)
+	cfg.SMS.AccessKeySecret = strings.TrimSpace(cfg.SMS.AccessKeySecret)
+	cfg.SMS.RegionID = strings.TrimSpace(cfg.SMS.RegionID)
+	cfg.SMS.SignName = strings.TrimSpace(cfg.SMS.SignName)
+	cfg.SMS.TemplateCode = strings.TrimSpace(cfg.SMS.TemplateCode)
+	cfg.SMS.HMACSecret = strings.TrimSpace(cfg.SMS.HMACSecret)
 	cfg.LinuxDo.ClientID = strings.TrimSpace(cfg.LinuxDo.ClientID)
 	cfg.LinuxDo.ClientSecret = strings.TrimSpace(cfg.LinuxDo.ClientSecret)
 	cfg.LinuxDo.AuthorizeURL = strings.TrimSpace(cfg.LinuxDo.AuthorizeURL)
@@ -2294,9 +2385,14 @@ func setDefaults() {
 	// SMS 默认配置
 	viper.SetDefault("sms.enabled", false)
 	viper.SetDefault("sms.provider", "aliyun")
+	viper.SetDefault("sms.access_key_id", "")
+	viper.SetDefault("sms.access_key_secret", "")
+	viper.SetDefault("sms.region_id", "cn-hangzhou")
 	viper.SetDefault("sms.sign_name", "")
 	viper.SetDefault("sms.template_code", "")
 	viper.SetDefault("sms.template_params", map[string]string{"code": "code", "ttl": "ttl_minutes"})
+	viper.SetDefault("sms.hmac_secret", "")
+	viper.SetDefault("sms.request_timeout_seconds", 5)
 	viper.SetDefault("sms.code_length", 6)
 	viper.SetDefault("sms.ttl_seconds", 300)
 	viper.SetDefault("sms.cooldown_seconds", 60)
@@ -2683,6 +2779,9 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	if err := validateSMSConfig(c.SMS, c.Server.Mode); err != nil {
+		return err
+	}
 	forwardedClientIPHeaders, err := NormalizeForwardedClientIPHeaders(c.Security.ForwardedClientIPHeaders)
 	if err != nil {
 		return fmt.Errorf("security.forwarded_client_ip_headers: %w", err)

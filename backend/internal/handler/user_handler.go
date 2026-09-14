@@ -18,6 +18,8 @@ import (
 type UserHandler struct {
 	userService           *service.UserService
 	authService           *service.AuthService
+	totpService           *service.TotpService
+	settingService        *service.SettingService
 	emailService          *service.EmailService
 	emailCache            service.EmailCache
 	affiliateService      *service.AffiliateService
@@ -41,6 +43,31 @@ func NewUserHandler(
 		affiliateService:      affiliateService,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 	}
+}
+
+// SetStepUpDependencies attaches the services used to protect sensitive
+// account-binding operations.  It is a setter so existing constructor callers
+// and focused handler tests remain source-compatible.
+func (h *UserHandler) SetStepUpDependencies(totpService *service.TotpService, settingService *service.SettingService) {
+	if h == nil {
+		return
+	}
+	h.totpService = totpService
+	h.settingService = settingService
+}
+
+func (h *UserHandler) enforcePhoneBindingStepUp(c *gin.Context) bool {
+	// Older embedders may construct UserHandler without the optional step-up
+	// dependencies.  The setting is disabled by default in those deployments;
+	// preserve that compatibility while production wiring supplies both deps.
+	if h == nil || h.settingService == nil || !h.settingService.IsStepUpEnabled(c.Request.Context()) {
+		return true
+	}
+	if h.totpService == nil || h.userService == nil {
+		response.InternalError(c, "Step-up verification service not configured")
+		return false
+	}
+	return middleware2.EnforceStepUp(c, h.totpService, h.userService, h.settingService)
 }
 
 // GetMyPlatformQuotas GET /user/platform-quotas
@@ -95,6 +122,7 @@ type userProfileResponse struct {
 	AuthBindings      map[string]service.UserIdentitySummary `json:"auth_bindings"`
 	IdentityBindings  map[string]service.UserIdentitySummary `json:"identity_bindings"`
 	EmailBound        bool                                   `json:"email_bound"`
+	PhoneBound        bool                                   `json:"phone_bound"`
 	LinuxDoBound      bool                                   `json:"linuxdo_bound"`
 	OIDCBound         bool                                   `json:"oidc_bound"`
 	WeChatBound       bool                                   `json:"wechat_bound"`
@@ -557,6 +585,7 @@ func userProfileResponseFromService(user *service.User, identities service.UserI
 		AuthBindings:      bindings,
 		IdentityBindings:  bindings,
 		EmailBound:        identities.Email.Bound,
+		PhoneBound:        identities.Phone.Bound,
 		LinuxDoBound:      identities.LinuxDo.Bound,
 		OIDCBound:         identities.OIDC.Bound,
 		WeChatBound:       identities.WeChat.Bound,
@@ -567,6 +596,7 @@ func userProfileResponseFromService(user *service.User, identities service.UserI
 func userProfileBindingMap(identities service.UserIdentitySummarySet) map[string]service.UserIdentitySummary {
 	return map[string]service.UserIdentitySummary{
 		"email":    identities.Email,
+		"phone":    identities.Phone,
 		"linuxdo":  identities.LinuxDo,
 		"oidc":     identities.OIDC,
 		"wechat":   identities.WeChat,

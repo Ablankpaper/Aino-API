@@ -45,6 +45,11 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 
 	response.Success(c, dto.PublicSettings{
 		RegistrationEnabled:                 settings.RegistrationEnabled,
+		PhoneLoginEnabled:                   settings.PhoneLoginEnabled,
+		PhoneRegistrationEnabled:            settings.PhoneRegistrationEnabled,
+		PhoneBindingEnabled:                 settings.PhoneBindingEnabled,
+		PhoneRegions:                        settings.PhoneRegions,
+		PhoneCodeLength:                     settings.PhoneCodeLength,
 		EmailVerifyEnabled:                  settings.EmailVerifyEnabled,
 		ForceEmailOnThirdPartySignup:        settings.ForceEmailOnThirdPartySignup,
 		RegistrationEmailSuffixWhitelist:    settings.RegistrationEmailSuffixWhitelist,

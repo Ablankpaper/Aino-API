@@ -9,10 +9,15 @@
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
           {{ t('auth.signInToAccount') }}
         </p>
+        <div v-if="phoneLoginEnabled" class="mx-auto mt-4 flex max-w-xs rounded-lg bg-gray-100 p-1 dark:bg-dark-800">
+          <button type="button" class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition" :class="loginMode === 'email' ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white' : 'text-gray-500 dark:text-dark-400'" @click="loginMode = 'email'">{{ t('auth.emailLabel') }}</button>
+          <button type="button" class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition" :class="loginMode === 'phone' ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white' : 'text-gray-500 dark:text-dark-400'" @click="loginMode = 'phone'">{{ t('auth.phoneLogin') }}</button>
+        </div>
       </div>
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <form @submit.prevent="handleSubmit" class="space-y-5">
         <!-- Email Input -->
+        <template v-if="loginMode === 'email'">
         <div>
           <label for="email" class="input-label">
             {{ t('auth.emailLabel') }}
@@ -35,6 +40,7 @@
             />
           </div>
         </div>
+
 
         <!-- Password Input -->
         <div>
@@ -77,6 +83,24 @@
             </router-link>
           </div>
         </div>
+        </template>
+
+        <template v-else>
+          <div>
+            <label for="phone" class="input-label">{{ t('auth.phoneLabel') }}</label>
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">+86</div>
+              <input id="phone" v-model="phoneData.phone" type="tel" inputmode="numeric" autocomplete="tel" :disabled="authActionDisabled || phoneLoading" class="input pl-14" :placeholder="t('auth.phonePlaceholder')" />
+            </div>
+          </div>
+          <div>
+            <label for="phone-code" class="input-label">{{ t('auth.verificationCode') }}</label>
+            <div class="flex gap-2">
+              <input id="phone-code" v-model="phoneData.code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" :disabled="authActionDisabled || phoneLoading" class="input flex-1" :placeholder="t('auth.phoneCodePlaceholder', { length: phoneCodeLength })" />
+              <button type="button" class="btn btn-secondary shrink-0" :disabled="authActionDisabled || phoneLoading || phoneCountdown > 0 || !phoneData.phone.trim()" @click="sendPhoneVerificationCode">{{ phoneCountdown > 0 ? t('auth.resendCountdown', { countdown: phoneCountdown }) : t('auth.sendCode') }}</button>
+            </div>
+          </div>
+        </template>
 
         <!-- Turnstile Widget -->
         <div v-if="captchaEnabled">
@@ -124,7 +148,7 @@
             ></path>
           </svg>
           <Icon v-else name="login" size="md" class="mr-2" />
-          {{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}
+          {{ isLoading || phoneLoading ? t('auth.signingIn') : loginMode === 'phone' ? t('auth.phoneSignIn') : t('auth.signIn') }}
         </button>
 
         <LoginAgreementPrompt
@@ -222,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, watch } from 'vue'
+import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
@@ -241,6 +265,7 @@ import {
   getPublicSettings,
   isTotp2FARequired,
   isWeChatWebOAuthEnabled,
+  sendPhoneCode,
   startOAuthLogin,
   type OAuthLoginStart
 } from '@/api/auth'
@@ -264,6 +289,13 @@ const appStore = useAppStore()
 // ==================== State ====================
 
 const isLoading = ref<boolean>(false)
+const phoneLoading = ref<boolean>(false)
+const loginMode = ref<'email' | 'phone'>('email')
+const phoneLoginEnabled = ref<boolean>(false)
+const phoneCodeLength = ref<number>(6)
+const phoneCountdown = ref<number>(0)
+const phoneChallengeId = ref<string>('')
+let phoneCountdownTimer: ReturnType<typeof setInterval> | null = null
 const passkeyLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
@@ -329,6 +361,7 @@ const formData = reactive({
   email: '',
   password: ''
 })
+const phoneData = reactive({ phone: '', code: '' })
 
 const errors = reactive({
   email: '',
@@ -345,7 +378,7 @@ const agreementGateActive = computed(
 )
 
 const authActionDisabled = computed(
-  () => isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
+  () => isLoading.value || phoneLoading.value || passkeyLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
 )
 
 const showPasskeyLogin = computed(
@@ -383,6 +416,8 @@ onMounted(async () => {
   try {
     const settings = await getPublicSettings()
     registrationEnabled.value = settings.registration_enabled === true
+    phoneLoginEnabled.value = settings.phone_login_enabled === true
+    phoneCodeLength.value = settings.phone_code_length || 6
     turnstileEnabled.value = settings.turnstile_enabled
     turnstileSiteKey.value = settings.turnstile_site_key || ''
     tencentCaptchaEnabled.value = settings.tencent_captcha_enabled === true
@@ -558,6 +593,84 @@ function validateForm(): boolean {
   return isValid
 }
 
+function handleSubmit(): void {
+  if (loginMode.value === 'phone') {
+    void handlePhoneLogin()
+    return
+  }
+  void handleLogin()
+}
+
+async function sendPhoneVerificationCode(): Promise<void> {
+  const phone = phoneData.phone.trim()
+  if (!/^1[3-9]\d{9}$/.test(phone.replace(/[\s()-]/g, ''))) {
+    appStore.showError(t('auth.invalidPhone'))
+    return
+  }
+  if (!(await acquireActionProof())) return
+  phoneLoading.value = true
+  try {
+    const result = await sendPhoneCode({
+      phone,
+      turnstile_token: turnstileEnabled.value || aliyunCaptchaEnabled.value ? turnstileToken.value : undefined,
+      tencent_captcha_ticket: tencentCaptchaEnabled.value ? turnstileToken.value : undefined,
+      tencent_captcha_randstr: tencentCaptchaEnabled.value ? tencentCaptchaRandstr.value : undefined
+    })
+    phoneChallengeId.value = result.challenge_id
+    phoneCountdown.value = result.retry_after || 60
+    if (phoneCountdownTimer) clearInterval(phoneCountdownTimer)
+    phoneCountdownTimer = setInterval(() => {
+      phoneCountdown.value = Math.max(0, phoneCountdown.value - 1)
+      if (phoneCountdown.value === 0 && phoneCountdownTimer) {
+        clearInterval(phoneCountdownTimer)
+        phoneCountdownTimer = null
+      }
+    }, 1000)
+    appStore.showSuccess(t('auth.phoneCodeSent'))
+  } catch (error: unknown) {
+    appStore.showError(extractI18nErrorMessage(error, t, 'auth.errors', t('auth.sendCodeFailed')))
+  } finally {
+    resetCaptchaProof()
+    phoneLoading.value = false
+  }
+}
+
+async function handlePhoneLogin(): Promise<void> {
+  if (agreementGateActive.value) {
+    appStore.showWarning(t('legal.loginAgreementPrompt.loginRequiredWarning'))
+    if (loginAgreementMode.value !== 'checkbox') showAgreementModal.value = true
+    return
+  }
+  const phone = phoneData.phone.trim()
+  if (!/^1[3-9]\d{9}$/.test(phone.replace(/[\s()-]/g, ''))) {
+    appStore.showError(t('auth.invalidPhone'))
+    return
+  }
+  if (!phoneChallengeId.value || !phoneData.code.trim()) {
+    appStore.showError(t('auth.phoneCodeRequired'))
+    return
+  }
+  phoneLoading.value = true
+  try {
+    const { loginWithPhone } = authStore
+    const response = await loginWithPhone({ phone, challenge_id: phoneChallengeId.value, code: phoneData.code.trim(), register_if_new: true, agreement_revision: loginAgreementRevision.value || undefined })
+    if (isTotp2FARequired(response)) {
+      const totpResponse = response as TotpLoginResponse
+      totpTempToken.value = totpResponse.temp_token || ''
+      totpUserEmailMasked.value = totpResponse.user_phone_masked || totpResponse.user_email_masked || ''
+      show2FAModal.value = true
+      return
+    }
+    clearAllAffiliateReferralCodes()
+    appStore.showSuccess(t('auth.loginSuccess'))
+    await router.push((router.currentRoute.value.query.redirect as string) || '/dashboard')
+  } catch (error: unknown) {
+    appStore.showError(extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed')))
+  } finally {
+    phoneLoading.value = false
+  }
+}
+
 // ==================== Form Handlers ====================
 
 async function handleLogin(): Promise<void> {
@@ -731,6 +844,10 @@ function handle2FACancel(): void {
   totpTempToken.value = ''
   totpUserEmailMasked.value = ''
 }
+
+onUnmounted(() => {
+  if (phoneCountdownTimer) clearInterval(phoneCountdownTimer)
+})
 </script>
 
 <style scoped>

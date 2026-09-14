@@ -938,6 +938,7 @@ export default {
       },
       providers: {
         email: 'Email',
+        phone: 'Mobile phone',
         linuxdo: 'LinuxDo',
         dingtalk: 'DingTalk',
         oidc: '{providerName}',
@@ -948,6 +949,11 @@ export default {
         canUnbind: 'You can unbind this sign-in method',
         bindAnotherBeforeUnbind: 'Bind another sign-in method before unbinding',
       },
+      phonePlaceholder: 'Enter mainland China mobile number',
+      phoneCodeSent: 'Verification code sent to your phone',
+      managePhoneAction: 'Manage phone',
+      hidePhoneFormAction: 'Hide phone form',
+      confirmPhoneBindAction: 'Bind phone',
       source: {
         avatar: 'Avatar is currently synced from {providerName}',
         username: 'Nickname is currently synced from {providerName}',

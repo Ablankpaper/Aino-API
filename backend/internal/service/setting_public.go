@@ -299,8 +299,26 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		balanceLowNotifyThreshold = v
 	}
 
+	// The process refuses to start with an invalid enabled SMS configuration, so
+	// the public capability flag is intentionally derived from the non-secret
+	// enabled bit rather than exposing any credential/configuration details. A
+	// nil config (as used by isolated tests and misconfigured wiring) fails
+	// closed. Registration remains separately controlled by the existing global
+	// registration switch; an SMS-capable server must not reopen registration.
+	phoneEnabled := s != nil && s.cfg != nil && s.cfg.SMS.Enabled
+	phoneCodeLength := 6
+	if phoneEnabled && s.cfg.SMS.CodeLength >= 4 && s.cfg.SMS.CodeLength <= 8 {
+		phoneCodeLength = s.cfg.SMS.CodeLength
+	}
+	phoneRegions := []string{"CN"}
+
 	return &PublicSettings{
 		RegistrationEnabled:                 settings[SettingKeyRegistrationEnabled] == "true",
+		PhoneLoginEnabled:                   phoneEnabled,
+		PhoneRegistrationEnabled:            phoneEnabled && settings[SettingKeyRegistrationEnabled] == "true",
+		PhoneBindingEnabled:                 phoneEnabled,
+		PhoneRegions:                        phoneRegions,
+		PhoneCodeLength:                     phoneCodeLength,
 		EmailVerifyEnabled:                  emailVerifyEnabled,
 		ForceEmailOnThirdPartySignup:        settings[SettingKeyForceEmailOnThirdPartySignup] == "true",
 		RegistrationEmailSuffixWhitelist:    registrationEmailSuffixWhitelist,
@@ -561,6 +579,11 @@ func (s *SettingService) IsUserErrorViewAllowed(ctx context.Context) bool {
 // drift automatically (see setting_service_injection_test.go).
 type PublicSettingsInjectionPayload struct {
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
+	PhoneLoginEnabled                   bool                     `json:"phone_login_enabled"`
+	PhoneRegistrationEnabled            bool                     `json:"phone_registration_enabled"`
+	PhoneBindingEnabled                 bool                     `json:"phone_binding_enabled"`
+	PhoneRegions                        []string                 `json:"phone_regions"`
+	PhoneCodeLength                     int                      `json:"phone_code_length"`
 	EmailVerifyEnabled                  bool                     `json:"email_verify_enabled"`
 	RegistrationEmailSuffixWhitelist    []string                 `json:"registration_email_suffix_whitelist"`
 	RegistrationEmailDomainQuotaEnabled bool                     `json:"registration_email_domain_quota_enabled"`
@@ -655,6 +678,11 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 
 	return &PublicSettingsInjectionPayload{
 		RegistrationEnabled:                 settings.RegistrationEnabled,
+		PhoneLoginEnabled:                   settings.PhoneLoginEnabled,
+		PhoneRegistrationEnabled:            settings.PhoneRegistrationEnabled,
+		PhoneBindingEnabled:                 settings.PhoneBindingEnabled,
+		PhoneRegions:                        settings.PhoneRegions,
+		PhoneCodeLength:                     settings.PhoneCodeLength,
 		EmailVerifyEnabled:                  settings.EmailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:    settings.RegistrationEmailSuffixWhitelist,
 		RegistrationEmailDomainQuotaEnabled: settings.RegistrationEmailDomainQuotaEnabled,

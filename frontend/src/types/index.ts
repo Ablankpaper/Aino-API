@@ -34,7 +34,7 @@ export interface NotifyEmailEntry {
 
 // ==================== User & Auth Types ====================
 
-export type UserAuthProvider = 'email' | 'linuxdo' | 'oidc' | 'wechat' | 'github' | 'google' | 'dingtalk'
+export type UserAuthProvider = 'email' | 'phone' | 'linuxdo' | 'oidc' | 'wechat' | 'github' | 'google' | 'dingtalk'
 
 export interface UserAuthBindingStatus {
   bound?: boolean
@@ -120,6 +120,30 @@ export interface LoginRequest {
   turnstile_token?: string
   tencent_captcha_ticket?: string
   tencent_captcha_randstr?: string
+}
+
+export interface PhoneSendCodeRequest {
+  phone: string
+  turnstile_token?: string
+  tencent_captcha_ticket?: string
+  tencent_captcha_randstr?: string
+}
+
+export interface PhoneSendCodeResponse {
+  challenge_id: string
+  expires_in: number
+  retry_after?: number
+  delivery: string
+}
+
+export interface PhoneVerifyRequest {
+  phone: string
+  challenge_id: string
+  code: string
+  register_if_new?: boolean
+  agreement_revision?: string
+  invitation_code?: string
+  promo_code?: string
 }
 
 export interface TencentCaptchaRequestProof {
@@ -210,6 +234,11 @@ export interface LoginAgreementDocument {
 
 export interface PublicSettings {
   registration_enabled: boolean
+  phone_login_enabled?: boolean
+  phone_registration_enabled?: boolean
+  phone_binding_enabled?: boolean
+  phone_regions?: string[]
+  phone_code_length?: number
   email_verify_enabled: boolean
   force_email_on_third_party_signup: boolean
   registration_email_suffix_whitelist: string[]
@@ -2380,6 +2409,7 @@ export interface TotpLoginResponse {
   requires_2fa: boolean
   temp_token?: string
   user_email_masked?: string
+  user_phone_masked?: string
 }
 
 export interface TotpLogin2FARequest {

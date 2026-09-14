@@ -323,7 +323,14 @@ type DefaultSubscriptionSetting struct {
 }
 
 type PublicSettings struct {
-	RegistrationEnabled                 bool
+	RegistrationEnabled bool
+	// Phone capabilities are derived from the server-side SMS configuration.
+	// Secrets and provider credentials are intentionally not part of this view.
+	PhoneLoginEnabled                   bool
+	PhoneRegistrationEnabled            bool
+	PhoneBindingEnabled                 bool
+	PhoneRegions                        []string
+	PhoneCodeLength                     int
 	EmailVerifyEnabled                  bool
 	ForceEmailOnThirdPartySignup        bool
 	RegistrationEmailSuffixWhitelist    []string

@@ -288,6 +288,7 @@ type TotpLoginResponse struct {
 	Requires2FA     bool   `json:"requires_2fa"`
 	TempToken       string `json:"temp_token,omitempty"`
 	UserEmailMasked string `json:"user_email_masked,omitempty"`
+	UserPhoneMasked string `json:"user_phone_masked,omitempty"`
 }
 
 // Login2FARequest represents the 2FA login request

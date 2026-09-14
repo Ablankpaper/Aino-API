@@ -431,6 +431,35 @@ func TestGetProfileIdentitySummaries_AllowsUnbindWhenAnotherLoginMethodRemains(t
 	require.NotEmpty(t, summaries.LinuxDo.SubjectHint)
 }
 
+func TestGetProfileIdentitySummaries_ExposesMaskedPhoneAndKeepsItAsLoginMethod(t *testing.T) {
+	verifiedAt := time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)
+	repo := &mockUserRepo{
+		getByIDUser: &User{
+			ID:           17,
+			Email:        "550e8400-e29b-41d4-a716-446655440000@phone.aino.invalid",
+			SignupSource: "phone",
+		},
+		identities: []UserAuthIdentityRecord{
+			{
+				ProviderType:    "phone",
+				ProviderKey:     "default",
+				ProviderSubject: "+8613900000000",
+				VerifiedAt:      &verifiedAt,
+			},
+		},
+	}
+
+	summaries, err := NewUserService(repo, nil, nil, nil).
+		GetProfileIdentitySummaries(context.Background(), 17, repo.getByIDUser)
+
+	require.NoError(t, err)
+	require.True(t, summaries.Phone.Bound)
+	require.Equal(t, "phone", summaries.Phone.Provider)
+	require.Equal(t, "+86 139****0000", summaries.Phone.DisplayName)
+	require.Equal(t, "+86 139****0000", summaries.Phone.SubjectHint)
+	require.False(t, summaries.Phone.CanUnbind, "a phone-only account cannot remove its only login method")
+}
+
 func TestUnbindUserAuthProviderRejectsLastRemainingLoginMethod(t *testing.T) {
 	repo := &mockUserRepo{
 		getByIDUser: &User{

@@ -236,6 +236,14 @@ func RegisterAuthRoutes(
 			}),
 			h.Auth.CreateDingTalkOAuthAccount,
 		)
+
+		// Phone authentication routes
+		auth.POST("/phone/send-code", rateLimiter.LimitWithOptions("auth-phone-send-code", 5, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.PhoneSendCode)
+		auth.POST("/phone/verify", rateLimiter.LimitWithOptions("auth-phone-verify", 20, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.PhoneVerify)
 	}
 
 	// 公开设置（无需认证）：每次请求都会查询 DB，按客户端 IP 兜底限流，

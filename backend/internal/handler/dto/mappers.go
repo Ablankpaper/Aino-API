@@ -13,7 +13,7 @@ func UserFromServiceShallow(u *service.User) *User {
 	if u == nil {
 		return nil
 	}
-	return &User{
+	out := &User{
 		ID:                         u.ID,
 		Email:                      u.Email,
 		Username:                   u.Username,
@@ -34,6 +34,12 @@ func UserFromServiceShallow(u *service.User) *User {
 		RPMLimit:                   u.RPMLimit,
 		DeletedAt:                  u.DeletedAt,
 	}
+	if service.IsPhonePlaceholderEmail(out.Email) {
+		// The internal placeholder is only a database compatibility detail;
+		// never expose it as a contact address or account identifier.
+		out.Email = ""
+	}
+	return out
 }
 
 func UserFromService(u *service.User) *User {

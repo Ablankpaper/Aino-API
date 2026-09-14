@@ -18,3 +18,13 @@ func TestUserFromServiceShallow_MapsDeletedAt(t *testing.T) {
 	active := UserFromServiceShallow(&service.User{ID: 2, Email: "a@test.com"})
 	require.Nil(t, active.DeletedAt, "active user must have nil DeletedAt")
 }
+
+func TestUserFromServiceShallow_HidesPhonePlaceholderEmail(t *testing.T) {
+	out := UserFromServiceShallow(&service.User{
+		ID:    18,
+		Email: "550e8400-e29b-41d4-a716-446655440000@phone.aino.invalid",
+	})
+
+	require.NotNil(t, out)
+	require.Empty(t, out.Email, "phone placeholder email must not be exposed to users")
+}

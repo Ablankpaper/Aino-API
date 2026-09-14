@@ -28,6 +28,8 @@ var (
 	ErrUserNotActive                = infraerrors.Forbidden("USER_NOT_ACTIVE", "user is not active")
 	ErrEmailExists                  = infraerrors.Conflict("EMAIL_EXISTS", "email already exists")
 	ErrEmailReserved                = infraerrors.BadRequest("EMAIL_RESERVED", "email is reserved")
+	ErrPhoneAlreadyBound            = infraerrors.Conflict("PHONE_ALREADY_BOUND", "phone number already belongs to another user")
+	ErrPhoneInvalid                 = infraerrors.BadRequest("PHONE_INVALID", "invalid phone number")
 	ErrInvalidToken                 = infraerrors.Unauthorized("INVALID_TOKEN", "invalid token")
 	ErrTokenExpired                 = infraerrors.Unauthorized("TOKEN_EXPIRED", "token has expired")
 	ErrAccessTokenExpired           = infraerrors.Unauthorized("ACCESS_TOKEN_EXPIRED", "access token has expired")
@@ -46,6 +48,8 @@ var (
 	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
 	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
 	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
+	ErrLoginAgreementRequired  = infraerrors.BadRequest("LOGIN_AGREEMENT_REQUIRED", "please accept the current login agreement")
+	ErrLoginAgreementInvalid   = infraerrors.BadRequest("LOGIN_AGREEMENT_INVALID", "the login agreement has changed; please review it again")
 	ErrOAuthInvitationRequired = infraerrors.Forbidden("OAUTH_INVITATION_REQUIRED", "invitation code required to complete oauth registration")
 	ErrCaptchaProviderConflict = infraerrors.ServiceUnavailable("CAPTCHA_PROVIDER_CONFLICT", "multiple captcha providers are enabled")
 )
@@ -78,6 +82,7 @@ type AuthService struct {
 	cfg                   *config.Config
 	settingService        *SettingService
 	emailService          *EmailService
+	smsService            *SMSService
 	turnstileService      *TurnstileService
 	tencentCaptchaService *TencentCaptchaService
 	aliyunCaptchaService  *AliyunCaptchaService
@@ -152,6 +157,17 @@ func (s *AuthService) SetTencentCaptchaService(tencentCaptchaService *TencentCap
 
 func (s *AuthService) SetAliyunCaptchaService(aliyunCaptchaService *AliyunCaptchaService) {
 	s.aliyunCaptchaService = aliyunCaptchaService
+}
+
+func (s *AuthService) SetSMSService(smsService *SMSService) {
+	s.smsService = smsService
+}
+
+func (s *AuthService) SMSService() *SMSService {
+	if s == nil {
+		return nil
+	}
+	return s.smsService
 }
 
 // Register 用户注册，返回token和用户
@@ -1399,7 +1415,8 @@ func randomHexString(byteLength int) (string, error) {
 
 func isReservedEmail(email string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(email))
-	return strings.HasSuffix(normalized, LinuxDoConnectSyntheticEmailDomain) ||
+	return IsPhonePlaceholderEmail(normalized) ||
+		strings.HasSuffix(normalized, LinuxDoConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, OIDCConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, DingTalkConnectSyntheticEmailDomain)

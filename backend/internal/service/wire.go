@@ -52,7 +52,33 @@ func ProvideEmailQueueService(emailService *EmailService) *EmailQueueService {
 	return NewEmailQueueService(emailService, 3)
 }
 
-// ProvideAuthService wires the optional captcha providers into AuthService while
+// ProvideSMSService adapts the deployment configuration to the service-level
+// SMS contract.  The zero time deliberately selects the live clock; tests can
+// continue to pass a fixed time through NewSMSService.
+func ProvideSMSService(cfg *config.Config, cache SMSCache, sender SMSSender) *SMSService {
+	if cfg == nil {
+		return NewSMSService(sender, cache, SMSConfig{}, time.Time{}, nil)
+	}
+	return NewSMSService(sender, cache, SMSConfig{
+		Enabled:               cfg.SMS.Enabled,
+		Provider:              cfg.SMS.Provider,
+		SignName:              cfg.SMS.SignName,
+		TemplateCode:          cfg.SMS.TemplateCode,
+		TemplateParams:        cfg.SMS.TemplateParams,
+		HMACSecret:            cfg.SMS.HMACSecret,
+		RequestTimeoutSeconds: cfg.SMS.RequestTimeoutSeconds,
+		CodeLength:            cfg.SMS.CodeLength,
+		TTLSeconds:            cfg.SMS.TTLSeconds,
+		CooldownSeconds:       cfg.SMS.CooldownSeconds,
+		MaxAttempts:           cfg.SMS.MaxAttempts,
+		PhoneHourLimit:        cfg.SMS.PhoneHourLimit,
+		PhoneDayLimit:         cfg.SMS.PhoneDayLimit,
+		IPHourLimit:           cfg.SMS.IPHourLimit,
+		GlobalDayLimit:        cfg.SMS.GlobalDayLimit,
+	}, time.Time{}, nil)
+}
+
+// ProvideAuthService wires the optional captcha providers and SMS service into AuthService while
 // keeping NewAuthService's public constructor compatible with existing tests.
 func ProvideAuthService(
 	entClient *dbent.Client,
@@ -62,6 +88,7 @@ func ProvideAuthService(
 	cfg *config.Config,
 	settingService *SettingService,
 	emailService *EmailService,
+	smsService *SMSService,
 	turnstileService *TurnstileService,
 	tencentCaptchaService *TencentCaptchaService,
 	aliyunCaptchaService *AliyunCaptchaService,
@@ -88,6 +115,7 @@ func ProvideAuthService(
 	)
 	svc.SetTencentCaptchaService(tencentCaptchaService)
 	svc.SetAliyunCaptchaService(aliyunCaptchaService)
+	svc.SetSMSService(smsService)
 	return svc
 }
 
@@ -822,6 +850,7 @@ func ProvideAPIKeyService(
 var ProviderSet = wire.NewSet(
 	// Core services
 	ProvideAuthService,
+	ProvideSMSService,
 	NewPasskeyService,
 	NewUserService,
 	ProvideAPIKeyService,

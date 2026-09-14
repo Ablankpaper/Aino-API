@@ -264,6 +264,7 @@ const memberSinceLabel = computed(() => {
 
 const providerLabels = computed<Record<UserAuthProvider, string>>(() => ({
   email: t('profile.authBindings.providers.email'),
+  phone: t('profile.authBindings.providers.phone'),
   linuxdo: t('profile.authBindings.providers.linuxdo'),
   dingtalk: t('profile.authBindings.providers.dingtalk'),
   oidc: t('profile.authBindings.providers.oidc', { providerName: props.oidcProviderName }),

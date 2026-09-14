@@ -13,6 +13,9 @@ import type {
   CurrentUserResponse,
   SendVerifyCodeRequest,
   SendVerifyCodeResponse,
+  PhoneSendCodeRequest,
+  PhoneSendCodeResponse,
+  PhoneVerifyRequest,
   PublicSettings,
   ActionCaptchaRequestProof,
   TotpLoginResponse,
@@ -143,6 +146,24 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
     localStorage.setItem('auth_user', JSON.stringify(data.user))
   }
 
+  return data
+}
+
+/** Request a one-time code for phone sign-in. */
+export async function sendPhoneCode(request: PhoneSendCodeRequest): Promise<PhoneSendCodeResponse> {
+  const { data } = await apiClient.post<PhoneSendCodeResponse>('/auth/phone/send-code', request)
+  return data
+}
+
+/** Verify a phone code and complete sign-in or first-time registration. */
+export async function verifyPhone(request: PhoneVerifyRequest): Promise<LoginResponse> {
+  const { data } = await apiClient.post<LoginResponse>('/auth/phone/verify', request)
+  if (!isTotp2FARequired(data)) {
+    setAuthToken(data.access_token)
+    if (data.refresh_token) setRefreshToken(data.refresh_token)
+    if (data.expires_in) setTokenExpiresAt(data.expires_in)
+    localStorage.setItem('auth_user', JSON.stringify(data.user))
+  }
   return data
 }
 
@@ -694,6 +715,8 @@ export const authAPI = {
   getTokenExpiresAt,
   clearAuthToken,
   getPublicSettings,
+  sendPhoneCode,
+  verifyPhone,
   sendVerifyCode,
   sendPendingOAuthVerifyCode,
   validatePromoCode,

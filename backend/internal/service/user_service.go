@@ -227,6 +227,7 @@ type UserIdentitySummary struct {
 
 type UserIdentitySummarySet struct {
 	Email    UserIdentitySummary `json:"email"`
+	Phone    UserIdentitySummary `json:"phone"`
 	LinuxDo  UserIdentitySummary `json:"linuxdo"`
 	OIDC     UserIdentitySummary `json:"oidc"`
 	WeChat   UserIdentitySummary `json:"wechat"`
@@ -347,6 +348,7 @@ func (s *UserService) GetProfileIdentitySummaries(ctx context.Context, userID in
 
 	summaries := UserIdentitySummarySet{
 		Email:    s.buildEmailIdentitySummary(user, records),
+		Phone:    s.buildProviderIdentitySummary("phone", user, records),
 		LinuxDo:  s.buildProviderIdentitySummary("linuxdo", user, records),
 		OIDC:     s.buildProviderIdentitySummary("oidc", user, records),
 		WeChat:   s.buildProviderIdentitySummary("wechat", user, records),
@@ -761,6 +763,12 @@ func (s *UserService) buildProviderIdentitySummary(provider string, user *User, 
 	filtered := filterUserAuthIdentities(records, provider)
 	if len(filtered) == 0 {
 		summary.CanBind = true
+		if provider == "phone" {
+			// Phone binding is handled by the dedicated verified-SMS flow,
+			// not the OAuth binding endpoint.
+			summary.BindStartPath = "/settings/profile?bind=phone"
+			return summary
+		}
 		bindStartPath, err := buildUserIdentityBindAuthorizeURL(provider, "")
 		if err == nil {
 			summary.BindStartPath = bindStartPath
@@ -771,9 +779,14 @@ func (s *UserService) buildProviderIdentitySummary(provider string, user *User, 
 	primary := selectPrimaryUserAuthIdentity(filtered)
 	summary.Bound = true
 	summary.BoundCount = len(filtered)
-	summary.DisplayName = userAuthIdentityDisplayName(primary)
+	if provider == "phone" {
+		summary.DisplayName = MaskPhone(primary.ProviderSubject)
+		summary.SubjectHint = summary.DisplayName
+	} else {
+		summary.DisplayName = userAuthIdentityDisplayName(primary)
+		summary.SubjectHint = maskOpaqueIdentity(primary.ProviderSubject)
+	}
 	summary.AvatarURL = strings.TrimSpace(firstStringIdentityValue(primary.Metadata, "avatar_url", "suggested_avatar_url", "headimgurl"))
-	summary.SubjectHint = maskOpaqueIdentity(primary.ProviderSubject)
 	summary.ProviderKey = strings.TrimSpace(primary.ProviderKey)
 	summary.VerifiedAt = primary.VerifiedAt
 	summary.CanUnbind = s.canUnbindProvider(provider, user, records)
@@ -796,7 +809,7 @@ func (s *UserService) canUnbindProvider(provider string, user *User, records []U
 		return true
 	}
 
-	for _, candidate := range []string{"linuxdo", "oidc", "wechat", "dingtalk"} {
+	for _, candidate := range []string{"linuxdo", "oidc", "wechat", "dingtalk", "phone"} {
 		if candidate == provider {
 			continue
 		}
@@ -896,6 +909,8 @@ func normalizeUserIdentityProvider(provider string) string {
 		return "dingtalk"
 	case "email":
 		return "email"
+	case "phone":
+		return "phone"
 	default:
 		return ""
 	}

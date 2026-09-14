@@ -167,6 +167,27 @@ func TestSettingService_GetPublicSettings_ExposesForceEmailOnThirdPartySignup(t 
 	require.True(t, settings.ForceEmailOnThirdPartySignup)
 }
 
+func TestSettingService_GetPublicSettings_ExposesPhoneCapabilityWithoutSecrets(t *testing.T) {
+	repo := &settingPublicRepoStub{values: map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+	}}
+	svc := NewSettingService(repo, &config.Config{SMS: config.SMSConfig{
+		Enabled:         true,
+		CodeLength:      6,
+		AccessKeyID:     "must-not-be-exposed",
+		AccessKeySecret: "must-not-be-exposed",
+		HMACSecret:      "must-not-be-exposed",
+	}})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.PhoneLoginEnabled)
+	require.True(t, settings.PhoneRegistrationEnabled)
+	require.True(t, settings.PhoneBindingEnabled)
+	require.Equal(t, []string{"CN"}, settings.PhoneRegions)
+	require.Equal(t, 6, settings.PhoneCodeLength)
+}
+
 func TestSettingService_GetPublicSettings_ExposesAllowUserViewErrorRequests(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{
