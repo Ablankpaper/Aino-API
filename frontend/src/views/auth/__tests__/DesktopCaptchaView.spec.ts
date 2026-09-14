@@ -137,4 +137,22 @@ describe('DesktopCaptchaView', () => {
     expect(invalidWrapper.get('[data-testid="desktop-captcha-unavailable"]').exists()).toBe(true)
     expect(invalidBridge.submit).not.toHaveBeenCalled()
   })
+
+  it('refuses conflicting enabled captcha providers without submitting', async () => {
+    const bridge = installBridge()
+    getIsolatedPublicSettings.mockResolvedValue({
+      ...disabledSettings,
+      turnstile_enabled: true,
+      turnstile_site_key: 'site-key',
+      tencent_captcha_enabled: true,
+      tencent_captcha_app_id: 'app-id'
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="desktop-captcha-unavailable"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="captcha-challenge"]').exists()).toBe(false)
+    expect(bridge.submit).not.toHaveBeenCalled()
+  })
 })

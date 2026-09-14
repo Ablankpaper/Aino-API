@@ -19,8 +19,10 @@ const defaultAliyunSMSRequestTimeout = 5 * time.Second
 
 // AliyunSMSSender implements SMSSender using Aliyun Dysmsapi
 type AliyunSMSSender struct {
-	client  *dysmsapi.Client
-	timeout time.Duration
+	client        *dysmsapi.Client
+	clientFactory func(regionID string, timeout time.Duration) (*dysmsapi.Client, error)
+	regionID      string
+	timeout       time.Duration
 }
 
 type contextAliyunHTTPClient struct {
@@ -54,8 +56,19 @@ func NewAliyunSMSSenderWithOptions(accessKeyID, accessKeySecret, regionID string
 	if timeout <= 0 {
 		timeout = defaultAliyunSMSRequestTimeout
 	}
+	clientFactory := func(currentRegionID string, currentTimeout time.Duration) (*dysmsapi.Client, error) {
+		return newAliyunSMSClient(accessKeyID, accessKeySecret, currentRegionID, currentTimeout)
+	}
+	client, err := clientFactory(regionID, timeout)
+	if err != nil {
+		return nil, fmt.Errorf("create Aliyun client: %w", err)
+	}
+	return &AliyunSMSSender{client: client, clientFactory: clientFactory, regionID: regionID, timeout: timeout}, nil
+}
+
+func newAliyunSMSClient(accessKeyID, accessKeySecret, regionID string, timeout time.Duration) (*dysmsapi.Client, error) {
 	timeoutMillis := int(timeout.Milliseconds())
-	client, err := dysmsapi.NewClient(&openapi.Config{
+	return dysmsapi.NewClient(&openapi.Config{
 		AccessKeyId:     tea.String(accessKeyID),
 		AccessKeySecret: tea.String(accessKeySecret),
 		RegionId:        tea.String(regionID),
@@ -63,10 +76,6 @@ func NewAliyunSMSSenderWithOptions(accessKeyID, accessKeySecret, regionID string
 		ConnectTimeout:  tea.Int(timeoutMillis),
 		ReadTimeout:     tea.Int(timeoutMillis),
 	})
-	if err != nil {
-		return nil, fmt.Errorf("create Aliyun client: %w", err)
-	}
-	return newAliyunSMSSenderWithClient(client, timeout), nil
 }
 
 func newAliyunSMSSenderWithClient(client *dysmsapi.Client, timeout time.Duration) *AliyunSMSSender {
@@ -78,7 +87,34 @@ func newAliyunSMSSenderWithClient(client *dysmsapi.Client, timeout time.Duration
 
 // Send sends an SMS message via Aliyun
 func (s *AliyunSMSSender) Send(ctx context.Context, message SMSMessage) (SMSSendResult, error) {
-	if s == nil || s.client == nil {
+	return s.sendWithClient(ctx, message, s.client, s.timeout)
+}
+
+func (s *AliyunSMSSender) SendWithOptions(ctx context.Context, message SMSMessage, options SMSDeliveryOptions) (SMSSendResult, error) {
+	if s == nil {
+		return SMSSendResult{}, fmt.Errorf("Aliyun SMS client is not configured")
+	}
+	regionID := strings.TrimSpace(options.RegionID)
+	if regionID == "" {
+		regionID = s.regionID
+	}
+	timeout := options.RequestTimeout
+	if timeout <= 0 {
+		timeout = s.timeout
+	}
+	client := s.client
+	if s.clientFactory != nil {
+		var err error
+		client, err = s.clientFactory(regionID, timeout)
+		if err != nil {
+			return SMSSendResult{}, fmt.Errorf("create Aliyun client: %w", err)
+		}
+	}
+	return s.sendWithClient(ctx, message, client, timeout)
+}
+
+func (s *AliyunSMSSender) sendWithClient(ctx context.Context, message SMSMessage, client *dysmsapi.Client, timeout time.Duration) (SMSSendResult, error) {
+	if client == nil {
 		return SMSSendResult{}, fmt.Errorf("Aliyun SMS client is not configured")
 	}
 	if err := ctx.Err(); err != nil {
@@ -103,17 +139,17 @@ func (s *AliyunSMSSender) Send(ctx context.Context, message SMSMessage) (SMSSend
 	}
 	request.SetTemplateParam(string(paramsJSON))
 
-	requestCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	requestCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	client := *s.client
-	client.HttpClient = &contextAliyunHTTPClient{ctx: requestCtx, base: client.HttpClient}
-	timeoutMillis := int(s.timeout.Milliseconds())
+	requestClient := *client
+	requestClient.HttpClient = &contextAliyunHTTPClient{ctx: requestCtx, base: requestClient.HttpClient}
+	timeoutMillis := int(timeout.Milliseconds())
 	runtime := new(util.RuntimeOptions).
 		SetAutoretry(false).
 		SetMaxAttempts(1).
 		SetConnectTimeout(timeoutMillis).
 		SetReadTimeout(timeoutMillis)
-	response, err := client.SendSmsWithOptions(request, runtime)
+	response, err := requestClient.SendSmsWithOptions(request, runtime)
 	if err != nil {
 		return SMSSendResult{}, fmt.Errorf("send SMS: %w", err)
 	}

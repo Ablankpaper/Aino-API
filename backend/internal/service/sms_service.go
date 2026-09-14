@@ -56,6 +56,16 @@ type SMSSender interface {
 	Send(ctx context.Context, message SMSMessage) (SMSSendResult, error)
 }
 
+type SMSDeliveryOptions struct {
+	Provider       string
+	RegionID       string
+	RequestTimeout time.Duration
+}
+
+type ConfigurableSMSSender interface {
+	SendWithOptions(ctx context.Context, message SMSMessage, options SMSDeliveryOptions) (SMSSendResult, error)
+}
+
 // PhoneCodeInput represents the input for requesting a phone verification code
 type PhoneCodeInput struct {
 	Phone           string
@@ -89,6 +99,7 @@ type PhoneCodeProof struct {
 type SMSConfig struct {
 	Enabled               bool
 	Provider              string
+	RegionID              string
 	SignName              string
 	TemplateCode          string
 	TemplateParams        map[string]string
@@ -272,7 +283,16 @@ func (s *SMSService) RequestCode(ctx context.Context, input PhoneCodeInput) (*Ph
 		sendCtx, cancel = context.WithTimeout(ctx, time.Duration(s.config.RequestTimeoutSeconds)*time.Second)
 		defer cancel()
 	}
-	result, err := s.sender.Send(sendCtx, message)
+	var result SMSSendResult
+	if sender, ok := s.sender.(ConfigurableSMSSender); ok {
+		result, err = sender.SendWithOptions(sendCtx, message, SMSDeliveryOptions{
+			Provider:       s.config.Provider,
+			RegionID:       s.config.RegionID,
+			RequestTimeout: time.Duration(s.config.RequestTimeoutSeconds) * time.Second,
+		})
+	} else {
+		result, err = s.sender.Send(sendCtx, message)
+	}
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(sendCtx.Err(), context.DeadlineExceeded) {
 			return nil, ErrSMSDeliveryUnknown.WithCause(err)

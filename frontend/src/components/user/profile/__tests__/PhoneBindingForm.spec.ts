@@ -102,6 +102,22 @@ describe('PhoneBindingForm', () => {
     })
   })
 
+  it('admits only one send while captcha proof acquisition is pending', async () => {
+    let resolveProof!: (value: { turnstile_token: string }) => void
+    const getCaptchaProof = vi.fn(() => new Promise<{ turnstile_token: string }>((resolve) => { resolveProof = resolve }))
+    sendPhoneBindingCode.mockResolvedValue({ challenge_id: 'challenge', expires_in: 300, retry_after: 60, delivery: 'submitted' })
+    const wrapper = mountForm({ getCaptchaProof })
+    await wrapper.get('[data-testid="phone-binding-phone"]').setValue('13900000000')
+
+    await wrapper.get('[data-testid="phone-binding-send"]').trigger('click')
+    await wrapper.get('[data-testid="phone-binding-send"]').trigger('click')
+    resolveProof({ turnstile_token: 'captcha-proof' })
+    await flushPromises()
+
+    expect(getCaptchaProof).toHaveBeenCalledTimes(1)
+    expect(sendPhoneBindingCode).toHaveBeenCalledTimes(1)
+  })
+
   it('shows a re-login path when recent authentication is required', async () => {
     sendPhoneBindingCode.mockRejectedValue({ reason: 'RECENT_AUTH_REQUIRED' })
     const wrapper = mountForm()

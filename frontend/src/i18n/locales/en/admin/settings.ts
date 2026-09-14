@@ -13,6 +13,8 @@ export default {
         ready: 'Ready',
         notReady: 'Not ready',
         provider: 'Provider',
+        regionId: 'Region ID',
+        requestTimeoutSeconds: 'Request timeout (seconds)',
         signName: 'Sign name',
         templateCode: 'Template code',
         templateVerified: 'Template variables and validity period verified',

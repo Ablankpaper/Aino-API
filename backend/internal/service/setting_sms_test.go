@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
@@ -34,6 +35,8 @@ func TestSMSSettingsUpdateControlsBothRuntimeAndPublicReadiness(t *testing.T) {
 	edit := initial.SMSEditableSettings
 	edit.Enabled = true
 	edit.CodeLength = 8
+	edit.RegionID = "cn-shanghai"
+	edit.RequestTimeoutSeconds = 9
 	updates, err := a.buildSMSSettingsUpdates(edit)
 	require.NoError(t, err)
 	for key, value := range updates {
@@ -46,8 +49,20 @@ func TestSMSSettingsUpdateControlsBothRuntimeAndPublicReadiness(t *testing.T) {
 	runtime, err := b.smsRuntimeConfig(ctx)
 	require.NoError(t, err)
 	require.Equal(t, public.PhoneCodeLength, runtime.CodeLength)
+	require.Equal(t, "cn-shanghai", runtime.RegionID)
+	require.Equal(t, 9, runtime.RequestTimeoutSeconds)
+	sender := &configurableSMSTestSender{smsTestSender: smsTestSender{result: SMSSendResult{Code: "OK"}}}
+	sms := newSMSTestService(sender, &smsTestCache{})
+	sms.settings = b
+	sms.rand = strings.NewReader(strings.Repeat("fixture-entropy", 4))
+	_, err = sms.RequestCode(ctx, PhoneCodeInput{Phone: "13900000000", Purpose: "login", ClientIP: "192.0.2.10"})
+	require.NoError(t, err)
+	require.Equal(t, "cn-shanghai", sender.options.RegionID)
+	require.Equal(t, 9*time.Second, sender.options.RequestTimeout)
 	admin, err := b.GetSMSSettings(ctx)
 	require.NoError(t, err)
+	require.Equal(t, edit.RegionID, admin.RegionID)
+	require.Equal(t, edit.RequestTimeoutSeconds, admin.RequestTimeoutSeconds)
 	blob, err := json.Marshal(admin)
 	require.NoError(t, err)
 	for _, secret := range []string{cfg.SMS.AccessKeyID, cfg.SMS.AccessKeySecret, cfg.SMS.HMACSecret} {
@@ -66,7 +81,7 @@ func TestSMSSettingsRejectUnsafeEnableAndNeverPersistSecrets(t *testing.T) {
 	s := NewSettingService(&settingRepoStub{values: map[string]string{}}, cfg)
 	initial, err := s.GetSMSSettings(context.Background())
 	require.NoError(t, err)
-	for _, scenario := range []string{"missing_key", "unverified", "mapping", "limits"} {
+	for _, scenario := range []string{"missing_key", "unverified", "mapping", "region", "timeout", "limits"} {
 		t.Run(scenario, func(t *testing.T) {
 			edit := initial.SMSEditableSettings
 			edit.Enabled = true
@@ -79,6 +94,10 @@ func TestSMSSettingsRejectUnsafeEnableAndNeverPersistSecrets(t *testing.T) {
 				edit.TemplateVerified = false
 			case "mapping":
 				edit.TemplateParams = map[string]string{"code": "1234"}
+			case "region":
+				edit.RegionID = ""
+			case "timeout":
+				edit.RequestTimeoutSeconds = 31
 			case "limits":
 				edit.PhoneHourLimit = 0
 			}

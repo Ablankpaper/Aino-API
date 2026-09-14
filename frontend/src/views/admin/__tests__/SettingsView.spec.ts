@@ -837,6 +837,8 @@ describe("admin SettingsView payment visible method controls", () => {
       sms: {
         enabled: false,
         provider: "aliyun",
+        region_id: "cn-hangzhou",
+        request_timeout_seconds: 5,
         sign_name: "Fixture Sign",
         template_code: "SMS_FIXTURE",
         template_params: { code: "code", minutes: "ttl_minutes" },
@@ -864,9 +866,66 @@ describe("admin SettingsView payment visible method controls", () => {
     await flushPromises();
 
     const payload = updateSettings.mock.calls.at(-1)?.[0];
-    expect(payload.sms).toMatchObject({ sign_name: "Edited Sign" });
+    expect(payload.sms).toMatchObject({
+      sign_name: "Edited Sign",
+      region_id: "cn-hangzhou",
+      request_timeout_seconds: 5,
+    });
     expect(payload.sms).not.toHaveProperty("credentials_configured");
     expect(payload.sms).not.toHaveProperty("hmac_configured");
+  });
+
+  it("uses returned SMS readiness and refuses to save stale template params when JSON is invalid", async () => {
+    getSettings.mockResolvedValueOnce({
+      ...baseSettingsResponse,
+      sms: {
+        enabled: true,
+        provider: "aliyun",
+        region_id: "cn-hangzhou",
+        request_timeout_seconds: 5,
+        sign_name: "Fixture Sign",
+        template_code: "SMS_FIXTURE",
+        template_params: { code: "code", minutes: "ttl_minutes" },
+        template_verified: true,
+        code_length: 6,
+        ttl_seconds: 300,
+        cooldown_seconds: 60,
+        max_attempts: 5,
+        phone_hour_limit: 5,
+        phone_day_limit: 10,
+        ip_hour_limit: 30,
+        global_day_limit: 1000,
+        credentials_configured: true,
+        hmac_configured: true,
+        ready: false,
+        reason_code: "SMS_NOT_CONFIGURED",
+      },
+    });
+    updateSettings.mockImplementationOnce(async (payload) => ({
+      ...baseSettingsResponse,
+      ...payload,
+      sms: {
+        ...payload.sms!,
+        credentials_configured: true,
+        hmac_configured: true,
+        ready: true,
+      },
+    }));
+    const wrapper = mountView();
+    await flushPromises();
+    await openSecurityTab(wrapper);
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+    expect(wrapper.get('[data-testid="sms-ready-status"]').text()).toContain("admin.settings.sms.ready");
+
+    updateSettings.mockClear();
+    await wrapper.get("textarea").setValue("{invalid");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith("admin.settings.sms.invalidTemplateParams");
   });
 
   it("人机验证切换到腾讯天御并保存四项配置", async () => {

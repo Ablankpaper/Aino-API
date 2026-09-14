@@ -13,6 +13,8 @@ export default {
         ready: '已就绪',
         notReady: '未就绪',
         provider: '供应商',
+        regionId: '地域 ID',
+        requestTimeoutSeconds: '请求超时（秒）',
         signName: '短信签名',
         templateCode: '模板代码',
         templateVerified: '已核验模板变量与有效期',

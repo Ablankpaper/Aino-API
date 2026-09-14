@@ -105,6 +105,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isTotp2FARequired, sendPhoneCode } from '@/api/auth'
 import Icon from '@/components/icons/Icon.vue'
+import { usePhoneChallenge } from '@/composables/usePhoneChallenge'
 import { useAppStore, useAuthStore } from '@/stores'
 import type { ActionCaptchaRequestProof, AuthResponse, TotpLoginResponse } from '@/types'
 import { extractI18nErrorMessage } from '@/utils/apiError'
@@ -141,65 +142,20 @@ const phone = ref('')
 const code = ref('')
 const invitationCode = ref('')
 const promoCode = ref('')
-const challengeId = ref('')
-const challengePhone = ref('')
-const delivery = ref('')
-const expired = ref(false)
-const expiresAt = ref(0)
-const retryAt = ref(0)
-const now = ref(Date.now())
-const sendingPhone = ref('')
-const pendingRequests = ref(0)
 const verifying = ref(false)
-let generation = 0
-let timer: ReturnType<typeof setInterval> | null = null
 
 const normalizedPhone = computed(() => normalizeCNPhone(phone.value))
-const retryRemaining = computed(() => Math.max(0, Math.ceil((retryAt.value - now.value) / 1000)))
-const currentChallenge = computed(() =>
-  Boolean(challengeId.value && challengePhone.value === normalizedPhone.value && !expired.value)
-)
+const challenge = usePhoneChallenge(normalizedPhone)
+const { challengeId, delivery, expired, retryRemaining, currentChallenge, sendingCurrentPhone, pendingRequests } = challenge
 const sendDisabled = computed(() =>
-  props.disabled || verifying.value || !normalizedPhone.value || retryRemaining.value > 0 || sendingPhone.value === normalizedPhone.value
+  props.disabled || verifying.value || !normalizedPhone.value || retryRemaining.value > 0 || sendingCurrentPhone.value
 )
 const submitDisabled = computed(() =>
   props.disabled || verifying.value || !currentChallenge.value || !new RegExp(`^[0-9]{${props.codeLength}}$`).test(code.value)
 )
 
-watch(() => phone.value, () => invalidateChallenge())
+watch(() => phone.value, () => challenge.invalidate())
 watch(() => pendingRequests.value > 0 || verifying.value, (busy) => emit('busy', busy), { immediate: true })
-
-function ensureTimer(): void {
-  if (timer) return
-  timer = setInterval(() => {
-    now.value = Date.now()
-    if (expiresAt.value > 0 && now.value >= expiresAt.value) {
-      challengeId.value = ''
-      expired.value = true
-      expiresAt.value = 0
-    }
-    if (retryAt.value <= now.value && expiresAt.value === 0) {
-      clearTimer()
-    }
-  }, 250)
-}
-
-function clearTimer(): void {
-  if (timer) clearInterval(timer)
-  timer = null
-}
-
-function invalidateChallenge(): void {
-  generation += 1
-  challengeId.value = ''
-  challengePhone.value = ''
-  delivery.value = ''
-  expiresAt.value = 0
-  retryAt.value = 0
-  expired.value = false
-  now.value = Date.now()
-  clearTimer()
-}
 
 function normalizePhoneDisplay(): void {
   const canonical = normalizedPhone.value
@@ -212,39 +168,20 @@ async function requestCode(): Promise<void> {
     appStore.showError(t('auth.invalidPhone'))
     return
   }
-  const requestGeneration = ++generation
-  challengeId.value = ''
-  challengePhone.value = ''
-  delivery.value = ''
-  expired.value = false
-  const proof = props.getCaptchaProof ? await props.getCaptchaProof() : {}
-  if (proof === null || requestGeneration !== generation || normalizedPhone.value !== canonical) return
-
-  pendingRequests.value += 1
-  sendingPhone.value = canonical
+  const request = challenge.beginRequest(canonical)
+  if (!request) return
   try {
+    const proof = props.getCaptchaProof ? await props.getCaptchaProof() : {}
+    if (proof === null || !challenge.isCurrent(request)) return
     const result = await sendPhoneCode({ phone: canonical, ...proof })
-    if (requestGeneration !== generation || normalizedPhone.value !== canonical) return
-    const requestNow = Date.now()
-    challengeId.value = result.challenge_id
-    challengePhone.value = canonical
-    delivery.value = result.delivery
-    expiresAt.value = requestNow + Math.max(0, result.expires_in) * 1000
-    retryAt.value = requestNow + Math.max(0, result.retry_after || 0) * 1000
-    now.value = requestNow
-    ensureTimer()
+    challenge.adopt(request, result)
   } catch (error) {
-    if (requestGeneration !== generation) return
+    if (!challenge.isCurrent(request)) return
     const retryAfter = phoneRetryAfterSeconds(error)
-    if (retryAfter > 0) {
-      now.value = Date.now()
-      retryAt.value = now.value + retryAfter * 1000
-      ensureTimer()
-    }
+    challenge.applyRetryAfter(request, retryAfter)
     appStore.showError(extractI18nErrorMessage(error, t, 'auth.errors', t('auth.sendCodeFailed')))
   } finally {
-    pendingRequests.value = Math.max(0, pendingRequests.value - 1)
-    if (sendingPhone.value === canonical) sendingPhone.value = ''
+    challenge.finishRequest(request)
     emit('reset-captcha')
   }
 }
@@ -281,7 +218,6 @@ async function submit(): Promise<void> {
 }
 
 onUnmounted(() => {
-  generation += 1
-  clearTimer()
+  challenge.dispose()
 })
 </script>

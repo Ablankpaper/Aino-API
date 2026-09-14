@@ -1423,7 +1423,7 @@
 
         <!-- Tab: Security — Registration, Turnstile, LinuxDo -->
         <div v-show="activeTab === 'security'" class="space-y-6">
-          <SmsSettingsSection v-if="form.sms" v-model="form.sms" />
+          <SmsSettingsSection v-if="form.sms" v-model="form.sms" @validity-change="smsSettingsValid = $event" />
           <!-- Registration Settings -->
           <div class="card">
             <div
@@ -9591,10 +9591,13 @@ type SettingsForm = Omit<
 
 const schedulingThresholdPlatforms = SCHEDULING_THRESHOLD_PLATFORMS;
 
+const smsSettingsValid = ref(true);
 const form = reactive<SettingsForm>({
   sms: {
     enabled: false,
     provider: "aliyun",
+    region_id: "cn-hangzhou",
+    request_timeout_seconds: 5,
     sign_name: "",
     template_code: "",
     template_params: { code: "code", ttl: "ttl_minutes" },
@@ -11115,6 +11118,10 @@ const siteBillingModeHint = computed(() =>
 );
 
 async function saveSettings() {
+  if (form.sms && !smsSettingsValid.value) {
+    appStore.showError(t("admin.settings.sms.invalidTemplateParams"));
+    return;
+  }
   saving.value = true;
   try {
     const normalizedTableDefaultPageSize = Math.floor(
@@ -11268,6 +11275,8 @@ async function saveSettings() {
         ? (({
             enabled,
             provider,
+            region_id,
+            request_timeout_seconds,
             sign_name,
             template_code,
             template_params,
@@ -11283,6 +11292,8 @@ async function saveSettings() {
           }) => ({
             enabled,
             provider,
+            region_id,
+            request_timeout_seconds,
             sign_name,
             template_code,
             template_params,

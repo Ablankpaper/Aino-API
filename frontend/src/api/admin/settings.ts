@@ -19,6 +19,8 @@ export interface DefaultSubscriptionSetting {
 export interface SMSEditableSettings {
   enabled: boolean;
   provider: string;
+  region_id: string;
+  request_timeout_seconds: number;
   sign_name: string;
   template_code: string;
   template_params: Record<string, string>;

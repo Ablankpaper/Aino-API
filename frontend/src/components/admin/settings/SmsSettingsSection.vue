@@ -35,6 +35,10 @@
           <input data-testid="sms-sign-name" class="input" :value="modelValue.sign_name" @input="updateString('sign_name', $event)" />
         </label>
         <label class="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+          <span>{{ t('admin.settings.sms.regionId') }}</span>
+          <input data-testid="sms-region-id" class="input" :value="modelValue.region_id" @input="updateString('region_id', $event)" />
+        </label>
+        <label class="space-y-1 text-sm text-gray-700 dark:text-gray-300">
           <span>{{ t('admin.settings.sms.templateCode') }}</span>
           <input class="input" :value="modelValue.template_code" @input="updateString('template_code', $event)" />
         </label>
@@ -46,14 +50,14 @@
 
       <label class="block space-y-1 text-sm text-gray-700 dark:text-gray-300">
         <span>{{ t('admin.settings.sms.templateParams') }}</span>
-        <textarea v-model="templateParamsJSON" class="input min-h-24 font-mono text-sm" @blur="commitTemplateParams"></textarea>
+        <textarea v-model="templateParamsJSON" class="input min-h-24 font-mono text-sm" @input="validateTemplateParams" @blur="commitTemplateParams"></textarea>
         <span v-if="templateParamsError" class="text-xs text-red-600">{{ t('admin.settings.sms.invalidTemplateParams') }}</span>
       </label>
 
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label v-for="field in numericFields" :key="field.key" class="space-y-1 text-sm text-gray-700 dark:text-gray-300">
           <span>{{ t(field.label) }}</span>
-          <input type="number" class="input" :min="field.min" :max="field.max" :value="modelValue[field.key]" @input="updateNumber(field.key, $event)" />
+          <input type="number" class="input" :data-testid="field.key === 'request_timeout_seconds' ? 'sms-request-timeout-seconds' : undefined" :min="field.min" :max="field.max" :value="modelValue[field.key]" @input="updateNumber(field.key, $event)" />
         </label>
       </div>
 
@@ -83,7 +87,10 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import { normalizeCNPhone, phoneDeliveryMessageKey } from '@/utils/phone'
 
 const props = defineProps<{ modelValue: SMSSettings }>()
-const emit = defineEmits<{ 'update:modelValue': [value: SMSSettings] }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: SMSSettings]
+  'validity-change': [valid: boolean]
+}>()
 const { t } = useI18n()
 const appStore = useAppStore()
 const stepUp = useStepUp()
@@ -93,8 +100,9 @@ const templateParamsJSON = ref(JSON.stringify(props.modelValue.template_params, 
 const templateParamsError = ref(false)
 const normalizedTestPhone = computed(() => normalizeCNPhone(testPhone.value))
 
-type NumericKey = keyof Pick<SMSEditableSettings, 'code_length' | 'ttl_seconds' | 'cooldown_seconds' | 'max_attempts' | 'phone_hour_limit' | 'phone_day_limit' | 'ip_hour_limit' | 'global_day_limit'>
+type NumericKey = keyof Pick<SMSEditableSettings, 'request_timeout_seconds' | 'code_length' | 'ttl_seconds' | 'cooldown_seconds' | 'max_attempts' | 'phone_hour_limit' | 'phone_day_limit' | 'ip_hour_limit' | 'global_day_limit'>
 const numericFields: Array<{ key: NumericKey; label: string; min: number; max?: number }> = [
+  { key: 'request_timeout_seconds', label: 'admin.settings.sms.requestTimeoutSeconds', min: 1, max: 30 },
   { key: 'code_length', label: 'admin.settings.sms.codeLength', min: 4, max: 8 },
   { key: 'ttl_seconds', label: 'admin.settings.sms.ttlSeconds', min: 30, max: 1800 },
   { key: 'cooldown_seconds', label: 'admin.settings.sms.cooldownSeconds', min: 1, max: 3600 },
@@ -113,7 +121,7 @@ function update(patch: Partial<SMSEditableSettings>): void {
   emit('update:modelValue', { ...props.modelValue, ...patch })
 }
 
-function updateString(key: 'provider' | 'sign_name' | 'template_code', event: Event): void {
+function updateString(key: 'provider' | 'region_id' | 'sign_name' | 'template_code', event: Event): void {
   update({ [key]: (event.target as HTMLInputElement).value })
 }
 
@@ -130,9 +138,23 @@ function commitTemplateParams(): void {
     const parsed = JSON.parse(templateParamsJSON.value) as unknown
     if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object' || Object.values(parsed).some((value) => typeof value !== 'string')) throw new Error('invalid')
     templateParamsError.value = false
+    emit('validity-change', true)
     update({ template_params: parsed as Record<string, string> })
   } catch {
     templateParamsError.value = true
+    emit('validity-change', false)
+  }
+}
+
+function validateTemplateParams(): void {
+  try {
+    const parsed = JSON.parse(templateParamsJSON.value) as unknown
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object' || Object.values(parsed).some((value) => typeof value !== 'string')) throw new Error('invalid')
+    templateParamsError.value = false
+    emit('validity-change', true)
+  } catch {
+    templateParamsError.value = true
+    emit('validity-change', false)
   }
 }
 

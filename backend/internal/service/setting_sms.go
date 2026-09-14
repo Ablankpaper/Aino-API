@@ -12,20 +12,22 @@ import (
 
 // SMSEditableSettings contains policy only. Secrets are never read from settings.
 type SMSEditableSettings struct {
-	Enabled          bool              `json:"enabled"`
-	Provider         string            `json:"provider"`
-	SignName         string            `json:"sign_name"`
-	TemplateCode     string            `json:"template_code"`
-	TemplateParams   map[string]string `json:"template_params"`
-	TemplateVerified bool              `json:"template_verified"`
-	CodeLength       int               `json:"code_length"`
-	TTLSeconds       int               `json:"ttl_seconds"`
-	CooldownSeconds  int               `json:"cooldown_seconds"`
-	MaxAttempts      int               `json:"max_attempts"`
-	PhoneHourLimit   int               `json:"phone_hour_limit"`
-	PhoneDayLimit    int               `json:"phone_day_limit"`
-	IPHourLimit      int               `json:"ip_hour_limit"`
-	GlobalDayLimit   int               `json:"global_day_limit"`
+	Enabled               bool              `json:"enabled"`
+	Provider              string            `json:"provider"`
+	RegionID              string            `json:"region_id"`
+	RequestTimeoutSeconds int               `json:"request_timeout_seconds"`
+	SignName              string            `json:"sign_name"`
+	TemplateCode          string            `json:"template_code"`
+	TemplateParams        map[string]string `json:"template_params"`
+	TemplateVerified      bool              `json:"template_verified"`
+	CodeLength            int               `json:"code_length"`
+	TTLSeconds            int               `json:"ttl_seconds"`
+	CooldownSeconds       int               `json:"cooldown_seconds"`
+	MaxAttempts           int               `json:"max_attempts"`
+	PhoneHourLimit        int               `json:"phone_hour_limit"`
+	PhoneDayLimit         int               `json:"phone_day_limit"`
+	IPHourLimit           int               `json:"ip_hour_limit"`
+	GlobalDayLimit        int               `json:"global_day_limit"`
 }
 
 type SMSSettings struct {
@@ -90,14 +92,16 @@ func (s *SettingService) deploymentSMS() config.SMSConfig {
 }
 
 func smsEditable(c config.SMSConfig) SMSEditableSettings {
-	return SMSEditableSettings{Enabled: c.Enabled, Provider: c.Provider, SignName: c.SignName, TemplateCode: c.TemplateCode,
+	return SMSEditableSettings{Enabled: c.Enabled, Provider: c.Provider, RegionID: c.RegionID, RequestTimeoutSeconds: c.RequestTimeoutSeconds,
+		SignName: c.SignName, TemplateCode: c.TemplateCode,
 		TemplateParams: c.TemplateParams, TemplateVerified: c.TemplateVerified, CodeLength: c.CodeLength, TTLSeconds: c.TTLSeconds,
 		CooldownSeconds: c.CooldownSeconds, MaxAttempts: c.MaxAttempts, PhoneHourLimit: c.PhoneHourLimit, PhoneDayLimit: c.PhoneDayLimit,
 		IPHourLimit: c.IPHourLimit, GlobalDayLimit: c.GlobalDayLimit}
 }
 
 func (e SMSEditableSettings) apply(c config.SMSConfig) config.SMSConfig {
-	c.Enabled, c.Provider, c.SignName, c.TemplateCode = e.Enabled, e.Provider, e.SignName, e.TemplateCode
+	c.Enabled, c.Provider, c.RegionID, c.RequestTimeoutSeconds = e.Enabled, e.Provider, e.RegionID, e.RequestTimeoutSeconds
+	c.SignName, c.TemplateCode = e.SignName, e.TemplateCode
 	c.TemplateParams, c.TemplateVerified = e.TemplateParams, e.TemplateVerified
 	c.CodeLength, c.TTLSeconds, c.CooldownSeconds, c.MaxAttempts = e.CodeLength, e.TTLSeconds, e.CooldownSeconds, e.MaxAttempts
 	c.PhoneHourLimit, c.PhoneDayLimit, c.IPHourLimit, c.GlobalDayLimit = e.PhoneHourLimit, e.PhoneDayLimit, e.IPHourLimit, e.GlobalDayLimit
@@ -189,7 +193,7 @@ func (s *SettingService) smsRuntimeConfig(ctx context.Context) (SMSConfig, error
 		return SMSConfig{}, ErrSMSNotConfigured
 	}
 	c := settings.SMSEditableSettings.apply(s.deploymentSMS())
-	return SMSConfig{Enabled: c.Enabled, Provider: c.Provider, SignName: c.SignName, TemplateCode: c.TemplateCode, TemplateParams: c.TemplateParams,
+	return SMSConfig{Enabled: c.Enabled, Provider: c.Provider, RegionID: c.RegionID, SignName: c.SignName, TemplateCode: c.TemplateCode, TemplateParams: c.TemplateParams,
 		HMACSecret: c.HMACSecret, RequestTimeoutSeconds: c.RequestTimeoutSeconds, CodeLength: c.CodeLength, TTLSeconds: c.TTLSeconds,
 		CooldownSeconds: c.CooldownSeconds, MaxAttempts: c.MaxAttempts, PhoneHourLimit: c.PhoneHourLimit, PhoneDayLimit: c.PhoneDayLimit,
 		IPHourLimit: c.IPHourLimit, GlobalDayLimit: c.GlobalDayLimit}, nil

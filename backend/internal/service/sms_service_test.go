@@ -19,6 +19,17 @@ type smsTestSender struct {
 	err     error
 }
 
+type configurableSMSTestSender struct {
+	smsTestSender
+	options SMSDeliveryOptions
+}
+
+func (s *configurableSMSTestSender) SendWithOptions(_ context.Context, message SMSMessage, options SMSDeliveryOptions) (SMSSendResult, error) {
+	s.message = message
+	s.options = options
+	return s.result, s.err
+}
+
 func (s *smsTestSender) Send(_ context.Context, message SMSMessage) (SMSSendResult, error) {
 	s.message = message
 	return s.result, s.err
@@ -102,6 +113,21 @@ func TestSMSRequestCodeCanonicalizesPhoneAndUsesConfiguredTemplateVariables(t *t
 	require.Equal(t, "123456", sender.message.Params["code"])
 	require.Equal(t, "5", sender.message.Params["minutes"])
 	require.NotEmpty(t, cache.challenge.CodeHMAC)
+}
+
+func TestSMSRequestCodePassesCurrentDeliveryOptionsToConfigurableSender(t *testing.T) {
+	sender := &configurableSMSTestSender{smsTestSender: smsTestSender{result: SMSSendResult{Code: "OK"}}}
+	svc := newSMSTestService(sender, &smsTestCache{})
+	svc.config.RegionID = "cn-shanghai"
+	svc.config.RequestTimeoutSeconds = 9
+
+	_, err := svc.RequestCode(context.Background(), PhoneCodeInput{
+		Phone: "13900000000", Purpose: "login", ClientIP: "192.0.2.10",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "cn-shanghai", sender.options.RegionID)
+	require.Equal(t, 9*time.Second, sender.options.RequestTimeout)
 }
 
 func TestSMSRequestCodeRejectsMissingHMACSecret(t *testing.T) {

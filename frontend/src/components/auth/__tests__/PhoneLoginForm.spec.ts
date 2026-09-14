@@ -79,6 +79,22 @@ describe('PhoneLoginForm', () => {
     expect(wrapper.get('[data-testid="phone-login-submit"]').attributes('disabled')).toBeDefined()
   })
 
+  it('admits only one send while captcha proof acquisition is pending', async () => {
+    let resolveProof!: (value: { turnstile_token: string }) => void
+    const getCaptchaProof = vi.fn(() => new Promise<{ turnstile_token: string }>((resolve) => { resolveProof = resolve }))
+    sendPhoneCode.mockResolvedValue({ challenge_id: 'challenge', expires_in: 300, retry_after: 60, delivery: 'submitted' })
+    const wrapper = mountForm({ getCaptchaProof })
+    await wrapper.get('[data-testid="phone-login-phone"]').setValue('13900000000')
+
+    await wrapper.get('[data-testid="phone-login-send"]').trigger('click')
+    await wrapper.get('[data-testid="phone-login-send"]').trigger('click')
+    resolveProof({ turnstile_token: 'captcha-proof' })
+    await flushPromises()
+
+    expect(getCaptchaProof).toHaveBeenCalledTimes(1)
+    expect(sendPhoneCode).toHaveBeenCalledTimes(1)
+  })
+
   it('normalizes a pasted country prefix for display and submits the code with Enter', async () => {
     sendPhoneCode.mockResolvedValue({ challenge_id: 'challenge', expires_in: 300, retry_after: 60, delivery: 'submitted' })
     loginWithPhone.mockResolvedValue(authResponse())

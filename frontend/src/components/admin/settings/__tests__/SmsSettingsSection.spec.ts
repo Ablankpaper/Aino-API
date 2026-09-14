@@ -21,6 +21,8 @@ vi.mock('vue-i18n', async (importOriginal) => ({
 const settings = {
   enabled: false,
   provider: 'aliyun',
+  region_id: 'cn-hangzhou',
+  request_timeout_seconds: 5,
   sign_name: 'Fixture Sign',
   template_code: 'SMS_FIXTURE',
   template_params: { code: 'code', minutes: 'ttl_minutes' },
@@ -68,6 +70,29 @@ describe('SmsSettingsSection', () => {
     await flushPromises()
     expect((wrapper.get('[data-testid="sms-test-phone"]').element as HTMLInputElement).value).toBe('13900000000')
     expect(showError).toHaveBeenCalledWith('fixture send failed')
+  })
+
+  it('emits region and request timeout edits as SMS policy', async () => {
+    const wrapper = mount(SmsSettingsSection, { props: { modelValue: { ...settings } } })
+
+    await wrapper.get('[data-testid="sms-region-id"]').setValue('cn-shanghai')
+    const regionUpdate = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as typeof settings
+    expect(regionUpdate.region_id).toBe('cn-shanghai')
+    await wrapper.setProps({ modelValue: regionUpdate })
+    await wrapper.get('[data-testid="sms-request-timeout-seconds"]').setValue('9')
+
+    const update = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as Record<string, unknown>
+    expect(update.region_id).toBe('cn-shanghai')
+    expect(update.request_timeout_seconds).toBe(9)
+  })
+
+  it('reports invalid template JSON to its settings form owner', async () => {
+    const wrapper = mount(SmsSettingsSection, { props: { modelValue: { ...settings } } })
+
+    await wrapper.get('textarea').setValue('{invalid')
+    await wrapper.get('textarea').trigger('blur')
+
+    expect(wrapper.emitted('validity-change')?.at(-1)).toEqual([false])
   })
 
   it('never sends on mount and requires an explicit receiver click', async () => {

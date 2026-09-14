@@ -508,8 +508,16 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	if req.SMS != nil && !middleware.EnforceStepUpAlways(c, h.totpService, h.userService) {
-		return
+	if req.SMS != nil {
+		previousSMS, err := h.settingService.GetSMSSettings(c.Request.Context())
+		if err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+		previousSettings.SMS = &previousSMS.SMSEditableSettings
+		if !reflect.DeepEqual(previousSMS.SMSEditableSettings, *req.SMS) && !middleware.EnforceStepUpAlways(c, h.totpService, h.userService) {
+			return
+		}
 	}
 
 	// 两个安全开关的请求字段为指针：省略字段=保持现值，避免旧客户端/脚本
@@ -2125,6 +2133,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 	h.ensureDingTalkSyncAttributes(c.Request.Context(), updatedSettings)
+	updatedSMS, err := h.settingService.GetSMSSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	updatedSettings.SMS = &updatedSMS.SMSEditableSettings
 	updatedAuthSourceDefaults, err := h.settingService.GetAuthSourceDefaultSettings(c.Request.Context())
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -2149,6 +2163,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	passkeyConfigured, passkeyRPID, passkeyRPOrigins := h.settingService.PasskeyConfiguration()
 
 	payload := dto.SystemSettings{
+		SMS:                                                    updatedSMS,
 		RegistrationEnabled:                                    updatedSettings.RegistrationEnabled,
 		EmailVerifyEnabled:                                     updatedSettings.EmailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:                       updatedSettings.RegistrationEmailSuffixWhitelist,

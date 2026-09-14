@@ -99,3 +99,27 @@ func TestAliyunSMSSenderAppliesTotalRequestTimeout(t *testing.T) {
 		t.Fatal("provider request never reached the local HTTP boundary")
 	}
 }
+
+func TestAliyunSMSSenderBuildsClientFromCurrentDeliveryOptions(t *testing.T) {
+	sender, server := newAliyunSMSBoundarySender(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"Code":"OK","RequestId":"request-id","BizId":"biz-id"}`))
+	}), time.Second)
+	defer server.Close()
+
+	var gotRegion string
+	var gotTimeout time.Duration
+	boundaryClient := sender.client
+	sender.clientFactory = func(regionID string, timeout time.Duration) (*dysmsapi.Client, error) {
+		gotRegion, gotTimeout = regionID, timeout
+		return boundaryClient, nil
+	}
+
+	_, err := sender.SendWithOptions(context.Background(), SMSMessage{
+		Phone: "+8613900000000", SignName: "test-sign", TemplateCode: "SMS_123456", Params: map[string]string{"code": "123456"},
+	}, SMSDeliveryOptions{RegionID: "cn-shanghai", RequestTimeout: 9 * time.Second})
+
+	require.NoError(t, err)
+	require.Equal(t, "cn-shanghai", gotRegion)
+	require.Equal(t, 9*time.Second, gotTimeout)
+}

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,10 +16,34 @@ import (
 func validSMSSettingsRequest() map[string]any {
 	return map[string]any{
 		"enabled": true, "provider": "aliyun", "sign_name": "fixture-sign", "template_code": "SMS_FIXTURE",
+		"region_id": "cn-hangzhou", "request_timeout_seconds": 5,
 		"template_params": map[string]string{"code": "code", "minutes": "ttl_minutes"}, "template_verified": true,
 		"code_length": 6, "ttl_seconds": 300, "cooldown_seconds": 60, "max_attempts": 5,
 		"phone_hour_limit": 5, "phone_day_limit": 10, "ip_hour_limit": 30, "global_day_limit": 1000,
 	}
+}
+
+func TestUpdateSettingsWithUnchangedSMSPolicySkipsStepUpAndReturnsCurrentReadiness(t *testing.T) {
+	cfg := validDeploymentSMSConfig()
+	cfg.Enabled = true
+	repo := &settingHandlerRepoStub{values: map[string]string{}}
+	h := NewSettingHandler(service.NewSettingService(repo, &config.Config{SMS: cfg}), nil, nil, nil, nil, nil, nil)
+
+	rec := doUpdateSettings(t, h, map[string]any{
+		"sms": validSMSSettingsRequest(), "registration_enabled": true,
+	}, nil)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var body struct {
+		Data struct {
+			SMS *service.SMSSettings `json:"sms"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	require.NotNil(t, body.Data.SMS)
+	require.True(t, body.Data.SMS.Ready)
+	require.Equal(t, "cn-hangzhou", body.Data.SMS.RegionID)
+	require.Equal(t, 5, body.Data.SMS.RequestTimeoutSeconds)
 }
 
 func validDeploymentSMSConfig() config.SMSConfig {
@@ -47,6 +72,17 @@ func TestDiffSettingsAuditsSMSPolicyAsOneSafeSection(t *testing.T) {
 	changed := diffSettings(before, after, nil, nil, UpdateSettingsRequest{SMS: after.SMS})
 
 	require.Contains(t, changed, "sms")
+}
+
+func TestDiffSettingsDoesNotAuditUnchangedSMSPolicyAlongsideOtherEdit(t *testing.T) {
+	sms := &service.SMSEditableSettings{Enabled: true, Provider: "aliyun"}
+	before := &service.SystemSettings{SMS: sms, RegistrationEnabled: false}
+	after := &service.SystemSettings{SMS: sms, RegistrationEnabled: true}
+
+	changed := diffSettings(before, after, nil, nil, UpdateSettingsRequest{SMS: sms})
+
+	require.NotContains(t, changed, "sms")
+	require.Contains(t, changed, "registration_enabled")
 }
 
 func TestSendTestSMSRequiresExplicitReceiverBeforeStepUp(t *testing.T) {

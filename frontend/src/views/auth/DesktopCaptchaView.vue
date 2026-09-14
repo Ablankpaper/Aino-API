@@ -69,12 +69,21 @@ let nonce = ''
 let submitted = false
 
 function resolveProvider(config: PublicSettings): CaptchaProvider | 'disabled' | 'invalid' {
-  if (config.turnstile_enabled) return config.turnstile_site_key ? 'turnstile' : 'invalid'
-  if (config.tencent_captcha_enabled) return config.tencent_captcha_app_id ? 'tencent' : 'invalid'
-  if (config.aliyun_captcha_enabled) {
-    return config.aliyun_captcha_scene_id && config.aliyun_captcha_prefix ? 'aliyun' : 'invalid'
-  }
-  return 'disabled'
+  const enabledProviders = [
+    config.turnstile_enabled
+      ? { provider: 'turnstile' as const, configured: Boolean(config.turnstile_site_key) }
+      : null,
+    config.tencent_captcha_enabled
+      ? { provider: 'tencent' as const, configured: Boolean(config.tencent_captcha_app_id) }
+      : null,
+    config.aliyun_captcha_enabled
+      ? { provider: 'aliyun' as const, configured: Boolean(config.aliyun_captcha_scene_id && config.aliyun_captcha_prefix) }
+      : null
+  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+
+  if (enabledProviders.length === 0) return 'disabled'
+  if (enabledProviders.length !== 1 || !enabledProviders[0].configured) return 'invalid'
+  return enabledProviders[0].provider
 }
 
 async function submitProof(proof: ActionCaptchaRequestProof): Promise<void> {
