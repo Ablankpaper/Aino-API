@@ -14,12 +14,13 @@ import (
 )
 
 const (
-	smsChallengePrefix     = "sms:challenge:"
-	smsPhoneCooldownPrefix = "sms:cooldown:phone:"
-	smsPhoneHourPrefix     = "sms:limit:phone:hour:"
-	smsPhoneDayPrefix      = "sms:limit:phone:day:"
-	smsIPHourPrefix        = "sms:limit:ip:hour:"
-	smsGlobalDayKey        = "sms:limit:global:day"
+	smsChallengePrefix        = "sms:challenge:"
+	smsCurrentChallengePrefix = "sms:current-challenge:"
+	smsPhoneCooldownPrefix    = "sms:cooldown:phone:"
+	smsPhoneHourPrefix        = "sms:limit:phone:hour:"
+	smsPhoneDayPrefix         = "sms:limit:phone:day:"
+	smsIPHourPrefix           = "sms:limit:ip:hour:"
+	smsGlobalDayKey           = "sms:limit:global:day"
 )
 
 // SMSCache implements service.SMSCache using Redis
@@ -116,6 +117,38 @@ func (c *SMSCache) CreateChallenge(ctx context.Context, challenge *service.Store
 		return fmt.Errorf("redis error: %w", err)
 	}
 
+	return nil
+}
+
+// ReplaceChallenge atomically invalidates the prior challenge for this exact
+// verification principal after the SMS provider accepts the replacement.
+func (c *SMSCache) ReplaceChallenge(ctx context.Context, challenge *service.StoredChallenge) error {
+	if c == nil || c.rdb == nil || challenge == nil || strings.TrimSpace(challenge.ID) == "" {
+		return fmt.Errorf("invalid SMS challenge")
+	}
+	data, err := json.Marshal(challenge)
+	if err != nil {
+		return fmt.Errorf("marshal challenge: %w", err)
+	}
+	ttl := time.Duration(challenge.TTLSeconds) * time.Second
+	if ttl <= 0 {
+		ttl = time.Until(challenge.ExpiresAt)
+	}
+	if ttl <= 0 {
+		return fmt.Errorf("challenge already expired")
+	}
+	challengeKey := c.key(smsChallengePrefix + challenge.ID)
+	currentKey := c.key(smsCurrentChallengePrefix + challenge.Phone + ":" + challenge.Purpose + ":" + strconv.FormatInt(challenge.UserID, 10) + ":" + challenge.SessionFamilyID)
+	const script = `
+		local previous = redis.call('GET', KEYS[2])
+		redis.call('PSETEX', KEYS[1], ARGV[2], ARGV[1])
+		redis.call('PSETEX', KEYS[2], ARGV[2], ARGV[3])
+		if previous and previous ~= ARGV[3] then redis.call('DEL', ARGV[4] .. previous) end
+		return 1
+	`
+	if err := c.rdb.Eval(ctx, script, []string{challengeKey, currentKey}, string(data), strconv.FormatInt(ttl.Milliseconds(), 10), challenge.ID, c.key(smsChallengePrefix)).Err(); err != nil {
+		return fmt.Errorf("replace challenge: %w", err)
+	}
 	return nil
 }
 
@@ -328,7 +361,11 @@ func (c *SMSCache) reserveCounter(ctx context.Context, key string, limit int, ex
 		return fmt.Errorf("redis error: %w", err)
 	}
 	if n, ok := result.(int64); ok && n == 0 {
-		return fmt.Errorf("%s limit exceeded", label)
+		retryAfter, err := c.retryAfter(ctx, key)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("%s limit exceeded, retry after %d seconds", label, retryAfter)
 	}
 	return nil
 }
@@ -360,12 +397,28 @@ func (c *SMSCache) reserveCounterPair(ctx context.Context, hourKey, dayKey strin
 	}
 	switch n {
 	case -1:
-		return fmt.Errorf("%s hourly limit exceeded", label)
+		retryAfter, err := c.retryAfter(ctx, hourKey)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("%s hourly limit exceeded, retry after %d seconds", label, retryAfter)
 	case -2:
-		return fmt.Errorf("%s daily limit exceeded", label)
+		retryAfter, err := c.retryAfter(ctx, dayKey)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("%s daily limit exceeded, retry after %d seconds", label, retryAfter)
 	default:
 		return nil
 	}
+}
+
+func (c *SMSCache) retryAfter(ctx context.Context, key string) (int64, error) {
+	ttl, err := c.rdb.TTL(ctx, key).Result()
+	if err != nil {
+		return 0, fmt.Errorf("redis error reading limit TTL: %w", err)
+	}
+	return maxInt64(1, int64(math.Ceil(ttl.Seconds()))), nil
 }
 
 func redisResultString(value interface{}) (string, bool) {

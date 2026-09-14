@@ -121,6 +121,7 @@ func TestSMSCachePhoneLimit(t *testing.T) {
 	err := cache.CheckAndReservePhoneLimit(ctx, phone, 3, 10)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "hourly limit")
+	require.Contains(t, err.Error(), "retry after")
 }
 
 // TestSMSCacheIPLimit verifies IP-based rate limiting
@@ -144,6 +145,23 @@ func TestSMSCacheIPLimit(t *testing.T) {
 	err := cache.CheckAndReserveIPLimit(ctx, ip, 5)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "IP hourly limit")
+	require.Contains(t, err.Error(), "retry after")
+}
+
+func TestSMSCacheReplacementInvalidatesOldChallenge(t *testing.T) {
+	ctx := context.Background()
+	cache := NewSMSCache(integrationRedis, "test:sms:replacement:")
+	replacementCache, ok := cache.(service.SMSChallengeReplacementCache)
+	require.True(t, ok)
+	now := time.Now().UTC()
+	old := &service.StoredChallenge{ID: "replacement-old", Phone: "+8613900000009", Purpose: "login", CodeHMAC: "old", CreatedAt: now, ExpiresAt: now.Add(time.Minute), TTLSeconds: 60, MaxAttempts: 5}
+	newChallenge := &service.StoredChallenge{ID: "replacement-new", Phone: old.Phone, Purpose: old.Purpose, CodeHMAC: "new", CreatedAt: now, ExpiresAt: now.Add(time.Minute), TTLSeconds: 60, MaxAttempts: 5}
+	require.NoError(t, replacementCache.ReplaceChallenge(ctx, old))
+	require.NoError(t, replacementCache.ReplaceChallenge(ctx, newChallenge))
+	_, err := cache.GetChallenge(ctx, old.ID)
+	require.Error(t, err)
+	_, err = cache.GetChallenge(ctx, newChallenge.ID)
+	require.NoError(t, err)
 }
 
 // TestSMSCacheIncrementAttempts verifies failed attempt tracking

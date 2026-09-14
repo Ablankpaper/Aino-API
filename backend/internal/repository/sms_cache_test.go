@@ -127,3 +127,18 @@ func TestSMSCacheCreateChallengeUsesExplicitTTL(t *testing.T) {
 	require.NoError(t, cache.CreateChallenge(context.Background(), challenge))
 	require.Greater(t, mr.TTL("test:sms:"+smsChallengePrefix+challenge.ID), time.Duration(0))
 }
+
+func TestSMSCacheReplacementInvalidatesPreviousChallengeForSamePrincipal(t *testing.T) {
+	_, client := newSMSCacheTestClient(t)
+	cache := &SMSCache{rdb: client, prefix: "test:sms:"}
+	now := time.Now().UTC()
+	old := &service.StoredChallenge{ID: "old", Phone: "+8613900000000", Purpose: "bind_phone", UserID: 42, SessionFamilyID: "session-a", CodeHMAC: "old", CreatedAt: now, ExpiresAt: now.Add(time.Minute), TTLSeconds: 60, MaxAttempts: 5}
+	newChallenge := &service.StoredChallenge{ID: "new", Phone: old.Phone, Purpose: old.Purpose, UserID: old.UserID, SessionFamilyID: old.SessionFamilyID, CodeHMAC: "new", CreatedAt: now, ExpiresAt: now.Add(time.Minute), TTLSeconds: 60, MaxAttempts: 5}
+	require.NoError(t, cache.ReplaceChallenge(context.Background(), old))
+	require.NoError(t, cache.ReplaceChallenge(context.Background(), newChallenge))
+	_, err := cache.GetChallenge(context.Background(), old.ID)
+	require.Error(t, err)
+	stored, err := cache.GetChallenge(context.Background(), newChallenge.ID)
+	require.NoError(t, err)
+	require.Equal(t, newChallenge.ID, stored.ID)
+}

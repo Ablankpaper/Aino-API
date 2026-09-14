@@ -134,6 +134,21 @@ func TestSMSRequestCodePreservesCooldownForRetryAfter(t *testing.T) {
 	require.Equal(t, "37", infraerrors.FromError(err).Metadata["retry_after"])
 }
 
+func TestNormalizeSMSCacheErrorPreservesRetryAfterForEveryLimiter(t *testing.T) {
+	for _, message := range []string{
+		"phone hourly limit exceeded, retry after 3600 seconds",
+		"phone daily limit exceeded, retry after 86400 seconds",
+		"IP hourly limit exceeded, retry after 3600 seconds",
+		"global daily limit exceeded, retry after 86400 seconds",
+	} {
+		t.Run(message, func(t *testing.T) {
+			err := normalizeSMSCacheError(errors.New(message))
+			require.ErrorIs(t, err, ErrSMSRateLimited)
+			require.NotEmpty(t, infraerrors.FromError(err).Metadata["retry_after"])
+		})
+	}
+}
+
 func TestSMSBindCodeCannotBeConsumedFromAnotherSession(t *testing.T) {
 	sender := &smsTestSender{result: SMSSendResult{Code: "OK"}}
 	cache := &smsTestCache{}

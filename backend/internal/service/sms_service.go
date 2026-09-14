@@ -128,6 +128,12 @@ type AtomicSMSChallengeCache interface {
 	VerifyAndConsumeChallenge(ctx context.Context, challengeID, phone, purpose string, userID int64, sessionFamilyID, expectedHMAC string, now time.Time) (SMSChallengeConsumeResult, error)
 }
 
+// SMSChallengeReplacementCache atomically makes a delivered challenge the
+// current challenge for its principal and invalidates its predecessor.
+type SMSChallengeReplacementCache interface {
+	ReplaceChallenge(ctx context.Context, challenge *StoredChallenge) error
+}
+
 type SMSChallengeConsumeResult struct {
 	Status     string
 	Challenge  *StoredChallenge
@@ -270,7 +276,12 @@ func (s *SMSService) RequestCode(ctx context.Context, input PhoneCodeInput) (*Ph
 
 	// Persist only after the provider accepted the request.  A sender failure
 	// therefore cannot leave a usable challenge in Redis.
-	if err := s.cache.CreateChallenge(ctx, challenge); err != nil {
+	if replacementCache, ok := s.cache.(SMSChallengeReplacementCache); ok {
+		err = replacementCache.ReplaceChallenge(ctx, challenge)
+	} else {
+		err = s.cache.CreateChallenge(ctx, challenge)
+	}
+	if err != nil {
 		return nil, ErrSMSDeliveryUnknown.WithCause(fmt.Errorf("store challenge: %w", err))
 	}
 
