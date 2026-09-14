@@ -30,7 +30,10 @@ var (
 	ErrPhoneAuthProof     = infraerrors.BadRequest("PHONE_AUTH_PROOF_INVALID", "invalid phone verification proof")
 )
 
-var templateVariableNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,31}$`)
+var (
+	templateVariableNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,31}$`)
+	smsRetryAfterPattern        = regexp.MustCompile(`(?i)retry after ([1-9][0-9]*) seconds`)
+)
 
 // SMSMessage represents an SMS to be sent
 type SMSMessage struct {
@@ -122,7 +125,7 @@ type SMSCache interface {
 // with small test/third-party adapters; production wiring always provides this
 // interface.
 type AtomicSMSChallengeCache interface {
-	VerifyAndConsumeChallenge(ctx context.Context, challengeID, phone, purpose string, userID int64, expectedHMAC string, now time.Time) (SMSChallengeConsumeResult, error)
+	VerifyAndConsumeChallenge(ctx context.Context, challengeID, phone, purpose string, userID int64, sessionFamilyID, expectedHMAC string, now time.Time) (SMSChallengeConsumeResult, error)
 }
 
 type SMSChallengeConsumeResult struct {
@@ -299,7 +302,7 @@ func (s *SMSService) ConsumeCode(ctx context.Context, input PhoneCodeInput, chal
 	}
 	expectedHMAC := s.computeCodeHMAC(challengeID, input.Phone, input.Purpose, code)
 	if atomicCache, ok := s.cache.(AtomicSMSChallengeCache); ok {
-		result, err := atomicCache.VerifyAndConsumeChallenge(ctx, challengeID, input.Phone, input.Purpose, input.UserID, expectedHMAC, s.clock())
+		result, err := atomicCache.VerifyAndConsumeChallenge(ctx, challengeID, input.Phone, input.Purpose, input.UserID, input.SessionFamilyID, expectedHMAC, s.clock())
 		if err != nil {
 			return nil, ErrSMSNotConfigured.WithCause(err)
 		}
@@ -334,7 +337,7 @@ func (s *SMSService) ConsumeCode(ctx context.Context, input PhoneCodeInput, chal
 	}
 
 	// For bind_phone purpose, verify user ID matches
-	if input.Purpose == "bind_phone" && challenge.UserID != input.UserID {
+	if input.Purpose == "bind_phone" && (challenge.UserID != input.UserID || challenge.SessionFamilyID != input.SessionFamilyID) {
 		return nil, ErrPhoneAuthProof
 	}
 
@@ -394,7 +397,7 @@ func (s *SMSService) validateRequest(input PhoneCodeInput) error {
 			return ErrPhoneAuthProof
 		}
 	case "bind_phone":
-		if input.UserID <= 0 {
+		if input.UserID <= 0 || strings.TrimSpace(input.SessionFamilyID) == "" {
 			return ErrPhoneAuthProof
 		}
 	default:
@@ -448,7 +451,11 @@ func normalizeSMSCacheError(err error) error {
 	}
 	lower := strings.ToLower(err.Error())
 	if strings.Contains(lower, "limit") || strings.Contains(lower, "cooldown") {
-		return ErrSMSRateLimited.WithCause(err)
+		limited := ErrSMSRateLimited
+		if match := smsRetryAfterPattern.FindStringSubmatch(err.Error()); len(match) == 2 {
+			limited = limited.WithMetadata(map[string]string{"retry_after": match[1]})
+		}
+		return limited.WithCause(err)
 	}
 	return ErrSMSNotConfigured.WithCause(err)
 }

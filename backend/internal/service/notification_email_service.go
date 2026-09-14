@@ -378,7 +378,7 @@ func (s *NotificationEmailService) Send(ctx context.Context, input NotificationE
 		return notificationEmailTemplateErr(err)
 	}
 	recipient := strings.TrimSpace(input.RecipientEmail)
-	if recipient == "" {
+	if recipient == "" || IsPhonePlaceholderEmail(recipient) {
 		return nil
 	}
 	if info.Optional {

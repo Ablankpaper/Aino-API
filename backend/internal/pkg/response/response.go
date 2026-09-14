@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"strconv"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/util/logredact"
@@ -85,6 +86,11 @@ func ErrorFrom(c *gin.Context, err error) bool {
 	}
 
 	statusCode, status := infraerrors.ToHTTP(err)
+	if statusCode == http.StatusTooManyRequests && status.Metadata != nil {
+		if retryAfter, parseErr := strconv.Atoi(status.Metadata["retry_after"]); parseErr == nil && retryAfter > 0 {
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
+		}
+	}
 
 	// Log internal errors with full details for debugging
 	if statusCode >= 500 && c.Request != nil {

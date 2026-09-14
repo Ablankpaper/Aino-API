@@ -42,17 +42,11 @@ BEGIN
     SELECT 1 FROM information_schema.tables 
     WHERE table_name = 'user_provider_default_grants'
   ) THEN
-    -- Drop old constraint if exists
-    IF EXISTS (
-      SELECT 1 FROM information_schema.table_constraints 
-      WHERE constraint_name LIKE '%provider_type%' 
-      AND table_name = 'user_provider_default_grants'
-    ) THEN
-      EXECUTE 'ALTER TABLE user_provider_default_grants DROP CONSTRAINT ' || 
-        (SELECT constraint_name FROM information_schema.table_constraints 
-         WHERE table_name = 'user_provider_default_grants' 
-         AND constraint_name LIKE '%provider_type%' LIMIT 1);
-    END IF;
+    -- Drop only the known CHECK constraint. PostgreSQL 18 also reports the
+    -- generated NOT NULL constraint in information_schema; a broad name match
+    -- can remove that constraint instead and leave this CHECK in place.
+    ALTER TABLE user_provider_default_grants
+      DROP CONSTRAINT IF EXISTS user_provider_default_grants_provider_type_check;
     
     -- Add new constraint
     ALTER TABLE user_provider_default_grants ADD CONSTRAINT user_provider_default_grants_provider_type_check

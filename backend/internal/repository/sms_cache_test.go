@@ -28,27 +28,55 @@ func TestSMSCacheVerifyAndConsumeChallengeIsAtomicAndBound(t *testing.T) {
 	cache := &SMSCache{rdb: client, prefix: "test:sms:"}
 	now := time.Now().UTC()
 	challenge := &service.StoredChallenge{
-		ID:          "challenge-atomic",
-		Phone:       "+8613900000000",
-		Purpose:     "bind_phone",
-		UserID:      42,
-		CodeHMAC:    "expected-hmac",
-		CreatedAt:   now,
-		ExpiresAt:   now.Add(time.Minute),
-		TTLSeconds:  60,
-		MaxAttempts: 2,
+		ID:              "challenge-atomic",
+		Phone:           "+8613900000000",
+		Purpose:         "bind_phone",
+		UserID:          42,
+		SessionFamilyID: "session-a",
+		CodeHMAC:        "expected-hmac",
+		CreatedAt:       now,
+		ExpiresAt:       now.Add(time.Minute),
+		TTLSeconds:      60,
+		MaxAttempts:     2,
 	}
 	require.NoError(t, cache.CreateChallenge(context.Background(), challenge))
 
-	result, err := cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, challenge.UserID, challenge.CodeHMAC, now)
+	result, err := cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, challenge.UserID, challenge.SessionFamilyID, challenge.CodeHMAC, now)
 	require.NoError(t, err)
 	require.Equal(t, "consumed", result.Status)
 	require.NotNil(t, result.Challenge)
 	require.True(t, result.Challenge.Consumed)
 
-	result, err = cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, challenge.UserID, challenge.CodeHMAC, now)
+	result, err = cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, challenge.UserID, challenge.SessionFamilyID, challenge.CodeHMAC, now)
 	require.NoError(t, err)
 	require.Equal(t, "already_consumed", result.Status)
+}
+
+func TestSMSCacheVerifyAndConsumeChallengeRejectsMismatchedSession(t *testing.T) {
+	_, client := newSMSCacheTestClient(t)
+	cache := &SMSCache{rdb: client, prefix: "test:sms:"}
+	now := time.Now().UTC()
+	challenge := &service.StoredChallenge{
+		ID:              "challenge-session-bound",
+		Phone:           "+8613900000000",
+		Purpose:         "bind_phone",
+		UserID:          42,
+		SessionFamilyID: "session-a",
+		CodeHMAC:        "expected-hmac",
+		CreatedAt:       now,
+		ExpiresAt:       now.Add(time.Minute),
+		TTLSeconds:      60,
+		MaxAttempts:     2,
+	}
+	require.NoError(t, cache.CreateChallenge(context.Background(), challenge))
+
+	result, err := cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, challenge.UserID, "session-b", challenge.CodeHMAC, now)
+	require.NoError(t, err)
+	require.Equal(t, "mismatch", result.Status)
+
+	stored, err := cache.GetChallenge(context.Background(), challenge.ID)
+	require.NoError(t, err)
+	require.False(t, stored.Consumed)
 }
 
 func TestSMSCacheVerifyAndConsumeChallengeCountsInvalidAttemptsAtomically(t *testing.T) {
@@ -67,17 +95,17 @@ func TestSMSCacheVerifyAndConsumeChallengeCountsInvalidAttemptsAtomically(t *tes
 	}
 	require.NoError(t, cache.CreateChallenge(context.Background(), challenge))
 
-	result, err := cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, 0, "wrong-hmac", now)
+	result, err := cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, 0, "", "wrong-hmac", now)
 	require.NoError(t, err)
 	require.Equal(t, "invalid_code", result.Status)
 	require.Equal(t, 1, result.Challenge.Attempts)
 
-	result, err = cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, 0, "wrong-hmac", now)
+	result, err = cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, 0, "", "wrong-hmac", now)
 	require.NoError(t, err)
 	require.Equal(t, "exhausted", result.Status)
 	require.Equal(t, 2, result.Challenge.Attempts)
 
-	result, err = cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, 0, "expected-hmac", now)
+	result, err = cache.VerifyAndConsumeChallenge(context.Background(), challenge.ID, challenge.Phone, challenge.Purpose, 0, "", "expected-hmac", now)
 	require.NoError(t, err)
 	require.Equal(t, "exhausted", result.Status)
 }

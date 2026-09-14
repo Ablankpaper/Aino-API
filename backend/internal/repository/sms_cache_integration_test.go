@@ -24,6 +24,8 @@ func TestSMSCacheOneUseAcrossConcurrentVerification(t *testing.T) {
 
 	// Create SMS cache with integration Redis
 	cache := NewSMSCache(integrationRedis, "test:sms:")
+	atomicCache, ok := cache.(service.AtomicSMSChallengeCache)
+	require.True(t, ok, "production Redis SMS cache must provide atomic verification")
 
 	// Create a challenge
 	now := time.Now()
@@ -32,7 +34,7 @@ func TestSMSCacheOneUseAcrossConcurrentVerification(t *testing.T) {
 		Phone:           "+8613900000000",
 		Purpose:         "login",
 		UserID:          0,
-		SessionFamilyID: "",
+		SessionFamilyID: "login-session",
 		CodeHMAC:        "dummy-hmac-for-test",
 		CreatedAt:       now,
 		ExpiresAt:       now.Add(5 * time.Minute),
@@ -52,8 +54,8 @@ func TestSMSCacheOneUseAcrossConcurrentVerification(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := cache.ConsumeChallenge(ctx, challenge.ID, "123456")
-			if err == nil {
+			result, err := atomicCache.VerifyAndConsumeChallenge(ctx, challenge.ID, challenge.Phone, challenge.Purpose, challenge.UserID, challenge.SessionFamilyID, challenge.CodeHMAC, time.Now().UTC())
+			if err == nil && result.Status == "consumed" {
 				atomic.AddInt32(&successCounter, 1)
 			}
 		}()

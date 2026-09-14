@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"time"
+
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -42,7 +44,7 @@ func (h *UserHandler) SendPhoneBindingCode(c *gin.Context) {
 		return
 	}
 
-	if !h.enforcePhoneBindingStepUp(c) {
+	if !h.enforcePhoneBindingSecurity(c, subject) {
 		return
 	}
 
@@ -54,10 +56,11 @@ func (h *UserHandler) SendPhoneBindingCode(c *gin.Context) {
 
 	// Request phone binding code
 	input := service.PhoneCodeInput{
-		Phone:    req.Phone,
-		Purpose:  "bind_phone",
-		UserID:   subject.UserID,
-		ClientIP: ip.GetClientIP(c),
+		Phone:           req.Phone,
+		Purpose:         "bind_phone",
+		UserID:          subject.UserID,
+		SessionFamilyID: c.GetString(middleware2.ContextKeySessionID),
+		ClientIP:        ip.GetClientIP(c),
 	}
 
 	challenge, err := h.authService.SMSService().RequestCode(c.Request.Context(), input)
@@ -88,7 +91,7 @@ func (h *UserHandler) BindPhone(c *gin.Context) {
 		return
 	}
 
-	if !h.enforcePhoneBindingStepUp(c) {
+	if !h.enforcePhoneBindingSecurity(c, subject) {
 		return
 	}
 
@@ -100,10 +103,11 @@ func (h *UserHandler) BindPhone(c *gin.Context) {
 
 	// Consume phone code
 	input := service.PhoneCodeInput{
-		Phone:    req.Phone,
-		Purpose:  "bind_phone",
-		UserID:   subject.UserID,
-		ClientIP: ip.GetClientIP(c),
+		Phone:           req.Phone,
+		Purpose:         "bind_phone",
+		UserID:          subject.UserID,
+		SessionFamilyID: c.GetString(middleware2.ContextKeySessionID),
+		ClientIP:        ip.GetClientIP(c),
 	}
 
 	proof, err := h.authService.SMSService().ConsumeCode(c.Request.Context(), input, req.ChallengeID, req.Code)
@@ -119,8 +123,37 @@ func (h *UserHandler) BindPhone(c *gin.Context) {
 		return
 	}
 
-	// Return updated user profile
-	response.Success(c, map[string]interface{}{
-		"user": user,
-	})
+	profileResp, err := h.buildUserProfileResponse(c.Request.Context(), subject.UserID, user)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	// Preserve the established phone-binding envelope while returning the same
+	// safe profile DTO used by other identity-binding endpoints.
+	response.Success(c, map[string]any{"user": profileResp})
+}
+
+func (h *UserHandler) enforcePhoneBindingSecurity(c *gin.Context, subject middleware2.AuthSubject) bool {
+	if h == nil || h.userService == nil {
+		response.InternalError(c, "User service not configured")
+		return false
+	}
+	user, err := h.userService.GetByID(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return false
+	}
+	if user.TotpEnabled {
+		if h.totpService == nil {
+			response.InternalError(c, "Step-up verification service not configured")
+			return false
+		}
+		return middleware2.EnforceStepUpAlways(c, h.totpService, h.userService)
+	}
+	if !service.IsPhoneBindingRecentAuth(subject.AuthTime, time.Now().UTC()) {
+		response.ErrorFrom(c, service.ErrRecentAuthenticationRequired)
+		return false
+	}
+	return true
 }

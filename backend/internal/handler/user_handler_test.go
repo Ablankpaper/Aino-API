@@ -619,6 +619,35 @@ func TestUserHandlerUnbindIdentityReturnsUpdatedProfile(t *testing.T) {
 	require.Equal(t, false, linuxdoBinding["bound"])
 }
 
+func TestUserProfileResponseForPhoneBindingDoesNotExposeInternalUserFields(t *testing.T) {
+	secret := "encrypted-totp-secret"
+	profile := userProfileResponseFromService(&service.User{
+		ID:                  25,
+		Email:               "00000000-0000-4000-8000-000000000000@phone.aino.invalid",
+		PasswordHash:        "bcrypt-password-hash",
+		TotpSecretEncrypted: &secret,
+		Notes:               "internal note",
+		Role:                service.RoleUser,
+		Status:              service.StatusActive,
+	}, service.UserIdentitySummarySet{
+		Phone: service.UserIdentitySummary{
+			Provider:    "phone",
+			Bound:       true,
+			DisplayName: "+86 139****0000",
+			SubjectHint: "+86 139****0000",
+		},
+	})
+
+	body, err := json.Marshal(profile)
+	require.NoError(t, err)
+	require.NotContains(t, string(body), "bcrypt-password-hash")
+	require.NotContains(t, string(body), "encrypted-totp-secret")
+	require.NotContains(t, string(body), "internal note")
+	require.NotContains(t, string(body), "phone.aino.invalid")
+	require.Contains(t, string(body), `"phone_bound":true`)
+	require.Contains(t, string(body), `"display_name":"+86 139****0000"`)
+}
+
 func TestUserHandlerUnbindIdentityRevokesAllUserSessionsWhenAuthServiceConfigured(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

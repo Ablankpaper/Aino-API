@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,11 +25,15 @@ func (s *smsTestSender) Send(_ context.Context, message SMSMessage) (SMSSendResu
 }
 
 type smsTestCache struct {
-	challenge *StoredChallenge
-	reserved  bool
+	challenge   *StoredChallenge
+	reserved    bool
+	cooldownErr error
 }
 
 func (c *smsTestCache) CheckAndReserveCooldown(context.Context, string, int) error {
+	if c.cooldownErr != nil {
+		return c.cooldownErr
+	}
 	if c.reserved {
 		return errors.New("phone cooldown active")
 	}
@@ -116,6 +121,44 @@ func TestSMSRequestCodeRejectsNonOKProviderResult(t *testing.T) {
 	_, err := svc.RequestCode(context.Background(), PhoneCodeInput{Phone: "13900000000", Purpose: "login"})
 
 	require.ErrorIs(t, err, ErrSMSDeliveryFailed)
+}
+
+func TestSMSRequestCodePreservesCooldownForRetryAfter(t *testing.T) {
+	sender := &smsTestSender{result: SMSSendResult{Code: "OK"}}
+	cache := &smsTestCache{cooldownErr: errors.New("phone cooldown active, retry after 37 seconds")}
+	svc := newSMSTestService(sender, cache)
+
+	_, err := svc.RequestCode(context.Background(), PhoneCodeInput{Phone: "13900000000", Purpose: "login"})
+
+	require.ErrorIs(t, err, ErrSMSRateLimited)
+	require.Equal(t, "37", infraerrors.FromError(err).Metadata["retry_after"])
+}
+
+func TestSMSBindCodeCannotBeConsumedFromAnotherSession(t *testing.T) {
+	sender := &smsTestSender{result: SMSSendResult{Code: "OK"}}
+	cache := &smsTestCache{}
+	svc := newSMSTestService(sender, cache)
+
+	challenge, err := svc.RequestCode(context.Background(), PhoneCodeInput{
+		Phone:           "13900000000",
+		Purpose:         "bind_phone",
+		UserID:          42,
+		SessionFamilyID: "session-a",
+		ClientIP:        "192.0.2.10",
+	})
+	require.NoError(t, err)
+
+	proof, err := svc.ConsumeCode(context.Background(), PhoneCodeInput{
+		Phone:           "13900000000",
+		Purpose:         "bind_phone",
+		UserID:          42,
+		SessionFamilyID: "session-b",
+		ClientIP:        "192.0.2.10",
+	}, challenge.ID, "123456")
+
+	require.ErrorIs(t, err, ErrPhoneAuthProof)
+	require.Nil(t, proof)
+	require.False(t, cache.challenge.Consumed, "a mismatched session must not consume the proof")
 }
 
 func TestNewSMSServiceUsesLiveClockWhenNowIsZero(t *testing.T) {

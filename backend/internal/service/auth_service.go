@@ -70,6 +70,10 @@ type JWTClaims struct {
 	SessionID string `json:"sid,omitempty"`
 	// BindingHash 会话指纹哈希（IP+UA），会话绑定开启时校验；空值表示旧 token（平滑升级）。
 	BindingHash string `json:"bnd,omitempty"`
+	// AuthTime records the last completed authentication ceremony. It is not
+	// refreshed by refresh-token rotation, so sensitive binding can require a
+	// recent real login without breaking legacy tokens for ordinary endpoints.
+	AuthTime int64 `json:"auth_time,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -558,6 +562,10 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		// 记录数据库错误但不暴露给用户
 		logger.LegacyPrintf("service.auth", "[Auth] Database error during login: %v", err)
 		return "", nil, ErrServiceUnavailable
+	}
+	if IsPhonePlaceholderEmail(user.Email) {
+		// Phone-only accounts have no password credential or email identity.
+		return "", nil, ErrInvalidCredentials
 	}
 
 	// 验证密码
@@ -1430,11 +1438,11 @@ func (s *AuthService) GenerateToken(ctx context.Context, user *User) (string, er
 	if err != nil {
 		return "", fmt.Errorf("generate session id: %w", err)
 	}
-	return s.generateAccessToken(user, sessionID, sessionBindingHashFromContext(ctx))
+	return s.generateAccessToken(user, sessionID, sessionBindingHashFromContext(ctx), time.Now().UTC())
 }
 
 // generateAccessToken 生成带会话 ID 与绑定指纹的 access token。
-func (s *AuthService) generateAccessToken(user *User, sessionID, bindingHash string) (string, error) {
+func (s *AuthService) generateAccessToken(user *User, sessionID, bindingHash string, authTime time.Time) (string, error) {
 	now := time.Now()
 	var expiresAt time.Time
 	if s.cfg.JWT.AccessTokenExpireMinutes > 0 {
@@ -1444,6 +1452,10 @@ func (s *AuthService) generateAccessToken(user *User, sessionID, bindingHash str
 		expiresAt = now.Add(time.Duration(s.cfg.JWT.ExpireHour) * time.Hour)
 	}
 
+	authTimeUnix := int64(0)
+	if !authTime.IsZero() {
+		authTimeUnix = authTime.Unix()
+	}
 	claims := &JWTClaims{
 		UserID:       user.ID,
 		Email:        user.Email,
@@ -1451,6 +1463,7 @@ func (s *AuthService) generateAccessToken(user *User, sessionID, bindingHash str
 		TokenVersion: resolvedTokenVersion(user),
 		SessionID:    sessionID,
 		BindingHash:  bindingHash,
+		AuthTime:     authTimeUnix,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -1528,8 +1541,13 @@ func (s *AuthService) RefreshToken(ctx context.Context, oldTokenString string) (
 		}
 	}
 
-	// 生成新token
-	return s.GenerateToken(ctx, user)
+	// Preserve the authentication ceremony timestamp during legacy access-token
+	// refresh. Refreshing must not become a substitute for logging in again.
+	authTime := time.Time{}
+	if claims.AuthTime > 0 {
+		authTime = time.Unix(claims.AuthTime, 0).UTC()
+	}
+	return s.generateAccessToken(user, claims.SessionID, claims.BindingHash, authTime)
 }
 
 // IsPasswordResetEnabled 检查是否启用密码重置功能
@@ -1558,6 +1576,9 @@ func (s *AuthService) preparePasswordReset(ctx context.Context, email, frontendB
 			return "", "", false
 		}
 		logger.LegacyPrintf("service.auth", "[Auth] Database error checking email for password reset: %v", err)
+		return "", "", false
+	}
+	if IsPhonePlaceholderEmail(user.Email) {
 		return "", "", false
 	}
 
@@ -1704,6 +1725,10 @@ type TokenPairWithUser struct {
 // GenerateTokenPair 生成Access Token和Refresh Token对
 // familyID: 可选的Token家族ID，用于Token轮转时保持家族关系
 func (s *AuthService) GenerateTokenPair(ctx context.Context, user *User, familyID string) (*TokenPair, error) {
+	return s.generateTokenPair(ctx, user, familyID, time.Now().UTC())
+}
+
+func (s *AuthService) generateTokenPair(ctx context.Context, user *User, familyID string, authTime time.Time) (*TokenPair, error) {
 	// 检查 refreshTokenCache 是否可用
 	if s.refreshTokenCache == nil {
 		return nil, errors.New("refresh token cache not configured")
@@ -1720,13 +1745,13 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *User, familyI
 	}
 
 	// 生成Access Token（携带会话ID与绑定指纹）
-	accessToken, err := s.generateAccessToken(user, familyID, sessionBindingHashFromContext(ctx))
+	accessToken, err := s.generateAccessToken(user, familyID, sessionBindingHashFromContext(ctx), authTime)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
 	// 生成Refresh Token
-	refreshToken, err := s.generateRefreshToken(ctx, user, familyID)
+	refreshToken, err := s.generateRefreshToken(ctx, user, familyID, authTime)
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
@@ -1739,7 +1764,7 @@ func (s *AuthService) GenerateTokenPair(ctx context.Context, user *User, familyI
 }
 
 // generateRefreshToken 生成并存储Refresh Token
-func (s *AuthService) generateRefreshToken(ctx context.Context, user *User, familyID string) (string, error) {
+func (s *AuthService) generateRefreshToken(ctx context.Context, user *User, familyID string, authTime time.Time) (string, error) {
 	// 生成随机Token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
@@ -1767,6 +1792,7 @@ func (s *AuthService) generateRefreshToken(ctx context.Context, user *User, fami
 		TokenVersion: resolvedTokenVersion(user),
 		FamilyID:     familyID,
 		BindingHash:  sessionBindingHashFromContext(ctx),
+		AuthTime:     authTime,
 		CreatedAt:    now,
 		ExpiresAt:    now.Add(ttl),
 	}
@@ -1868,7 +1894,7 @@ func (s *AuthService) RefreshTokenPair(ctx context.Context, refreshToken string)
 	}
 
 	// 生成新的Token对，保持同一个家族ID
-	pair, err := s.GenerateTokenPair(ctx, user, data.FamilyID)
+	pair, err := s.generateTokenPair(ctx, user, data.FamilyID, data.AuthTime)
 	if err != nil {
 		return nil, err
 	}

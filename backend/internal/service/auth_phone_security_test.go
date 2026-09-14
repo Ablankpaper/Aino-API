@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -16,6 +17,15 @@ func verifiedPhoneProof() *PhoneCodeProof {
 		ChallengeID: "challenge-1",
 		verified:    true,
 	}
+}
+
+func TestIsPhoneBindingRecentAuthRejectsMissingAndStaleAuthentication(t *testing.T) {
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+
+	require.False(t, IsPhoneBindingRecentAuth(time.Time{}, now), "legacy tokens without auth_time must reauthenticate before binding")
+	require.False(t, IsPhoneBindingRecentAuth(now.Add(-StepUpGrantTTL-time.Second), now), "refreshing an old session must not make it recent")
+	require.False(t, IsPhoneBindingRecentAuth(now.Add(time.Second), now), "future auth_time is invalid")
+	require.True(t, IsPhoneBindingRecentAuth(now.Add(-StepUpGrantTTL), now))
 }
 
 func TestLoginOrRegisterPhoneRejectsUnverifiedOrMismatchedProof(t *testing.T) {

@@ -107,11 +107,12 @@ func TestErrorFrom(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
-		name         string
-		err          error
-		wantWritten  bool
-		wantHTTPCode int
-		wantBody     Response
+		name           string
+		err            error
+		wantWritten    bool
+		wantHTTPCode   int
+		wantBody       Response
+		wantRetryAfter string
 	}{
 		{
 			name:        "nil_error",
@@ -175,6 +176,19 @@ func TestErrorFrom(t *testing.T) {
 			},
 		},
 		{
+			name:           "rate_limited_error_sets_retry_after_header",
+			err:            errors2.TooManyRequests("RATE_LIMITED", "try later").WithMetadata(map[string]string{"retry_after": "42"}),
+			wantWritten:    true,
+			wantHTTPCode:   http.StatusTooManyRequests,
+			wantRetryAfter: "42",
+			wantBody: Response{
+				Code:     http.StatusTooManyRequests,
+				Message:  "try later",
+				Reason:   "RATE_LIMITED",
+				Metadata: map[string]string{"retry_after": "42"},
+			},
+		},
+		{
 			name:         "unknown_error_defaults_to_500",
 			err:          errors.New("boom"),
 			wantWritten:  true,
@@ -201,6 +215,7 @@ func TestErrorFrom(t *testing.T) {
 			}
 
 			require.Equal(t, tt.wantHTTPCode, w.Code)
+			require.Equal(t, tt.wantRetryAfter, w.Header().Get("Retry-After"))
 			var got Response
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 			require.Equal(t, tt.wantBody, got)

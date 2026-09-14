@@ -634,6 +634,64 @@ func TestAuthServiceBindEmailIdentity_RevokesExistingAccessAndRefreshTokens(t *t
 	require.True(t, errors.Is(err, service.ErrTokenRevoked) || errors.Is(err, service.ErrRefreshTokenInvalid))
 }
 
+func TestAuthServiceRefreshTokenPairPreservesAuthenticationTime(t *testing.T) {
+	ctx := context.Background()
+	refreshTokenCache := newEmailBindRefreshTokenCacheStub()
+	user := &service.User{
+		ID:           43,
+		Email:        "recent-auth@example.com",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+		TokenVersion: 1,
+	}
+	userRepo := newEmailBindUserRepoStub(user)
+	svc := service.NewAuthService(nil, userRepo, nil, refreshTokenCache, &config.Config{JWT: config.JWTConfig{
+		Secret: "test-recent-auth-secret", ExpireHour: 1, RefreshTokenExpireDays: 7,
+	}}, nil, nil, nil, nil, nil, nil, nil, nil)
+
+	pair, err := svc.GenerateTokenPair(ctx, user, "")
+	require.NoError(t, err)
+	var original time.Time
+	for _, data := range refreshTokenCache.tokens {
+		original = data.AuthTime
+	}
+	require.False(t, original.IsZero())
+
+	refreshed, err := svc.RefreshTokenPair(ctx, pair.RefreshToken)
+	require.NoError(t, err)
+	var rotated time.Time
+	for _, data := range refreshTokenCache.tokens {
+		rotated = data.AuthTime
+	}
+	require.True(t, rotated.Equal(original), "refresh rotation must not extend the phone-binding authentication window")
+
+	claims, err := svc.ValidateToken(refreshed.AccessToken)
+	require.NoError(t, err)
+	require.Equal(t, original.Unix(), claims.AuthTime)
+}
+
+func TestAuthServiceLegacyAccessTokenRefreshPreservesAuthenticationTime(t *testing.T) {
+	ctx := context.Background()
+	user := &service.User{ID: 44, Email: "legacy-refresh@example.com", Role: service.RoleUser, Status: service.StatusActive, TokenVersion: 1}
+	userRepo := newEmailBindUserRepoStub(user)
+	svc := service.NewAuthService(nil, userRepo, nil, nil, &config.Config{JWT: config.JWTConfig{
+		Secret: "test-legacy-refresh-auth-time", ExpireHour: 1,
+	}}, nil, nil, nil, nil, nil, nil, nil, nil)
+
+	access, err := svc.GenerateToken(ctx, user)
+	require.NoError(t, err)
+	before, err := svc.ValidateToken(access)
+	require.NoError(t, err)
+	time.Sleep(2 * time.Second)
+
+	refreshed, err := svc.RefreshToken(ctx, access)
+	require.NoError(t, err)
+	after, err := svc.ValidateToken(refreshed)
+	require.NoError(t, err)
+	require.Equal(t, before.AuthTime, after.AuthTime, "access-token refresh must not extend the phone-binding authentication window")
+	require.Equal(t, before.SessionID, after.SessionID)
+}
+
 func TestAuthServiceEmailIdentityBinding_RejectsEmailOutsideRegistrationSuffixWhitelist(t *testing.T) {
 	ctx := context.Background()
 	cache := &emailBindCacheStub{

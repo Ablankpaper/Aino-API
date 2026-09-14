@@ -8,8 +8,23 @@ import (
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 )
+
+var ErrRecentAuthenticationRequired = infraerrors.Forbidden(
+	"RECENT_AUTH_REQUIRED",
+	"a recent login is required before binding a phone number",
+)
+
+// IsPhoneBindingRecentAuth is intentionally based on the authentication
+// ceremony timestamp, not JWT issuance: a refresh must not extend this window.
+func IsPhoneBindingRecentAuth(authTime, now time.Time) bool {
+	if authTime.IsZero() || authTime.After(now) {
+		return false
+	}
+	return now.Sub(authTime) <= StepUpGrantTTL
+}
 
 // BindPhoneIdentity verifies and binds a phone number to the current user.
 // The phone number must be verified via SMS before binding. Phone binding does

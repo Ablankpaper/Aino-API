@@ -70,11 +70,32 @@ func newJWTTestEnv(users map[int64]*service.User) (*gin.Engine, *service.AuthSer
 		subject, _ := GetAuthSubjectFromContext(c)
 		role, _ := GetUserRoleFromContext(c)
 		c.JSON(http.StatusOK, gin.H{
-			"user_id": subject.UserID,
-			"role":    role,
+			"user_id":   subject.UserID,
+			"role":      role,
+			"auth_time": subject.AuthTime.Unix(),
 		})
 	})
 	return r, authSvc
+}
+
+func TestJWTAuthExposesAuthenticationTimeFromToken(t *testing.T) {
+	user := &service.User{ID: 1, Email: "test@example.com", Role: "user", Status: service.StatusActive}
+	router, authSvc := newJWTTestEnv(map[int64]*service.User{1: user})
+	token, err := authSvc.GenerateToken(context.Background(), user)
+	require.NoError(t, err)
+	claims, err := authSvc.ValidateToken(token)
+	require.NoError(t, err)
+	require.NotZero(t, claims.AuthTime)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, float64(claims.AuthTime), body["auth_time"])
 }
 
 func TestJWTAuth_ValidToken(t *testing.T) {

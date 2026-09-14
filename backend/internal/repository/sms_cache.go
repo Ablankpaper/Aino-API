@@ -242,6 +242,7 @@ func (c *SMSCache) VerifyAndConsumeChallenge(
 	ctx context.Context,
 	challengeID, phone, purpose string,
 	userID int64,
+	sessionFamilyID string,
 	expectedHMAC string,
 	now time.Time,
 ) (service.SMSChallengeConsumeResult, error) {
@@ -263,10 +264,10 @@ func (c *SMSCache) VerifyAndConsumeChallenge(
 		if max_attempts > 0 and attempts >= max_attempts then
 			return {'exhausted', data, tostring(ttl)}
 		end
-		if tostring(challenge.Phone or '') ~= ARGV[1] or tostring(challenge.Purpose or '') ~= ARGV[2] or tostring(challenge.UserID or 0) ~= ARGV[3] then
+		if tostring(challenge.Phone or '') ~= ARGV[1] or tostring(challenge.Purpose or '') ~= ARGV[2] or tostring(challenge.UserID or 0) ~= ARGV[3] or tostring(challenge.SessionFamilyID or '') ~= ARGV[4] then
 			return {'mismatch'}
 		end
-		if tostring(challenge.CodeHMAC or '') ~= ARGV[4] then
+		if tostring(challenge.CodeHMAC or '') ~= ARGV[5] then
 			attempts = attempts + 1
 			challenge.Attempts = attempts
 			local status = 'invalid_code'
@@ -276,13 +277,13 @@ func (c *SMSCache) VerifyAndConsumeChallenge(
 			return {status, encoded, tostring(ttl)}
 		end
 		challenge.Consumed = true
-		challenge.ConsumedAt = ARGV[5]
+		challenge.ConsumedAt = ARGV[6]
 		local encoded = cjson.encode(challenge)
 		redis.call('PSETEX', key, ttl, encoded)
 		return {'consumed', encoded, tostring(ttl)}
 	`
 	key := c.key(smsChallengePrefix + challengeID)
-	result, err := c.rdb.Eval(ctx, script, []string{key}, phone, purpose, strconv.FormatInt(userID, 10), expectedHMAC, now.UTC().Format(time.RFC3339Nano)).Result()
+	result, err := c.rdb.Eval(ctx, script, []string{key}, phone, purpose, strconv.FormatInt(userID, 10), sessionFamilyID, expectedHMAC, now.UTC().Format(time.RFC3339Nano)).Result()
 	if err != nil {
 		return service.SMSChallengeConsumeResult{}, fmt.Errorf("verify challenge: %w", err)
 	}
