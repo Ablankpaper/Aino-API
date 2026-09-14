@@ -20,6 +20,7 @@ import (
 var (
 	ErrSMSDisabled        = infraerrors.ServiceUnavailable("SMS_DISABLED", "phone verification is not enabled")
 	ErrSMSNotConfigured   = infraerrors.ServiceUnavailable("SMS_NOT_CONFIGURED", "phone verification is not configured")
+	ErrSMSUnavailable     = infraerrors.ServiceUnavailable("SMS_UNAVAILABLE", "phone verification is temporarily unavailable; please try again")
 	ErrSMSDeliveryFailed  = infraerrors.ServiceUnavailable("SMS_DELIVERY_FAILED", "verification message could not be submitted")
 	ErrSMSDeliveryUnknown = infraerrors.ServiceUnavailable("SMS_DELIVERY_UNKNOWN", "verification message status is unknown; please wait before retrying")
 	ErrSMSRateLimited     = infraerrors.TooManyRequests("SMS_RATE_LIMITED", "too many verification requests; please try again later")
@@ -468,7 +469,7 @@ func normalizeSMSCacheError(err error) error {
 		}
 		return limited.WithCause(err)
 	}
-	return ErrSMSNotConfigured.WithCause(err)
+	return ErrSMSUnavailable.WithCause(err)
 }
 
 func (s *SMSService) proofFromAtomicResult(result SMSChallengeConsumeResult, challengeID string) (*PhoneCodeProof, error) {

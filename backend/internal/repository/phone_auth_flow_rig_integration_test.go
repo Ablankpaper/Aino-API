@@ -3,10 +3,10 @@
 package repository_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +33,7 @@ type phoneAuthFlowRig struct {
 	sender      *phoneAuthFlowSender
 	router      *gin.Engine
 	redis       *redis.Client
+	smsPrefix   string
 }
 
 func newPhoneAuthFlowRig(t *testing.T) *phoneAuthFlowRig {
@@ -49,6 +50,8 @@ func newPhoneAuthFlowRig(t *testing.T) *phoneAuthFlowRig {
 		service.SettingKeyStepUpEnabled:           "false",
 		service.SettingKeyLoginAgreementEnabled:   "false",
 		service.SettingKeyLoginAgreementDocuments: `[{"id":"terms","title":"Terms","content":"terms"}]`,
+		service.SettingKeyEmailVerifyEnabled:      "false",
+		service.SettingKeyPasswordResetEnabled:    "false",
 	}
 	original := map[string]*string{}
 	for key := range settingValues {
@@ -72,12 +75,16 @@ func newPhoneAuthFlowRig(t *testing.T) *phoneAuthFlowRig {
 	cfg := &config.Config{JWT: config.JWTConfig{Secret: "integration-phone-binding-secret", ExpireHour: 1, RefreshTokenExpireDays: 1}}
 	settings := service.NewSettingService(settingRepo, cfg)
 	sender := &phoneAuthFlowSender{}
-	rdb := repository.GetIntegrationRedis()
-	sms := service.NewSMSService(sender, repository.NewSMSCache(rdb, fmt.Sprintf("phone-flow:%d:", time.Now().UnixNano())), service.SMSConfig{
+	redisOptions := *repository.GetIntegrationRedis().Options()
+	rdb := redis.NewClient(&redisOptions)
+	t.Cleanup(func() { _ = rdb.Close() })
+	smsPrefix := fmt.Sprintf("phone-flow:%d:", time.Now().UnixNano())
+	sms := service.NewSMSService(sender, repository.NewSMSCache(rdb, smsPrefix), service.SMSConfig{
 		Enabled: true, HMACSecret: "integration-secret-at-least-32-bytes", TemplateParams: map[string]string{"code": "code"},
 		CodeLength: 6, TTLSeconds: 300, CooldownSeconds: 60, MaxAttempts: 5, PhoneHourLimit: 50, PhoneDayLimit: 50, IPHourLimit: 50, GlobalDayLimit: 1000,
-	}, time.Time{}, bytes.NewReader(bytes.Repeat([]byte{1, 2, 3, 4, 5, 6, 7, 8}, 64)))
-	auth := service.NewAuthService(client, userRepo, nil, repository.NewRefreshTokenCache(rdb), cfg, settings, nil, nil, nil, nil, nil, nil, nil)
+	}, time.Time{}, nil)
+	emails := service.NewEmailService(settingRepo, repository.NewEmailCache(rdb))
+	auth := service.NewAuthService(client, userRepo, repository.NewRedeemCodeRepository(client), repository.NewRefreshTokenCache(rdb), cfg, settings, emails, nil, nil, nil, nil, nil, nil)
 	auth.SetSMSService(sms)
 	users := service.NewUserService(userRepo, settingRepo, nil, nil)
 	totp := service.NewTotpService(userRepo, nil, repository.NewTotpCache(rdb), settings, nil, nil)
@@ -89,10 +96,12 @@ func newPhoneAuthFlowRig(t *testing.T) *phoneAuthFlowRig {
 	protected.Use(gin.HandlerFunc(middleware.NewJWTAuthMiddleware(auth, users, settings, nil)))
 	protected.POST("/send", userHandler.SendPhoneBindingCode)
 	protected.POST("/bind", userHandler.BindPhone)
+	protected.GET("/profile", userHandler.GetProfile)
+	protected.DELETE("/bindings/:provider", userHandler.UnbindIdentity)
 	router.POST("/login/send", authHandler.PhoneSendCode)
 	router.POST("/login/verify", authHandler.PhoneVerify)
 	router.POST("/email/login", authHandler.Login)
-	return &phoneAuthFlowRig{ctx: ctx, client: client, userRepo: userRepo, settingRepo: settingRepo, settings: settings, auth: auth, users: users, sender: sender, router: router, redis: rdb}
+	return &phoneAuthFlowRig{ctx: ctx, client: client, userRepo: userRepo, settingRepo: settingRepo, settings: settings, auth: auth, users: users, sender: sender, router: router, redis: rdb, smsPrefix: smsPrefix}
 }
 
 func (r *phoneAuthFlowRig) user(t *testing.T, status string, totp bool) *service.User {
@@ -112,7 +121,7 @@ func (r *phoneAuthFlowRig) user(t *testing.T, status string, totp bool) *service
 
 func (r *phoneAuthFlowRig) request(method, path, body, token string) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)

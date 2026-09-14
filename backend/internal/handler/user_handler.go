@@ -349,6 +349,9 @@ func (h *UserHandler) UnbindIdentity(c *gin.Context) {
 		response.Unauthorized(c, "User not authenticated")
 		return
 	}
+	if strings.EqualFold(strings.TrimSpace(c.Param("provider")), "phone") && !h.enforcePhoneBindingSecurity(c, subject) {
+		return
+	}
 
 	updatedUser, unbound, err := h.userService.UnbindUserAuthProviderWithResult(
 		c.Request.Context(),

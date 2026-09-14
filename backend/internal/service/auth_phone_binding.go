@@ -10,6 +10,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/lib/pq"
 )
 
 var ErrRecentAuthenticationRequired = infraerrors.Forbidden(
@@ -89,6 +90,15 @@ func (s *AuthService) ensurePhoneIdentityAvailableForUser(
 	if s.entClient == nil {
 		return ErrServiceUnavailable
 	}
+	alreadyBound, err := s.entClient.AuthIdentity.Query().Where(
+		authidentity.UserIDEQ(currentUser.ID), authidentity.ProviderTypeEQ("phone"), authidentity.ProviderSubjectNEQ(phone),
+	).Exist(ctx)
+	if err != nil {
+		return ErrServiceUnavailable
+	}
+	if alreadyBound {
+		return ErrPhoneAlreadyBound
+	}
 
 	// Check if phone is already bound to any user
 	existingIdentity, err := s.entClient.AuthIdentity.Query().
@@ -152,7 +162,9 @@ func (s *AuthService) updateBoundPhoneIdentityWithClient(
 
 	// Create or update phone auth identity
 	if err := ensureBoundPhoneAuthIdentityWithClient(ctx, client, currentUser.ID, phone, "auth_service_phone_bind"); err != nil {
-		if errors.Is(err, ErrPhoneAlreadyBound) {
+		var constraint *pq.Error
+		if errors.Is(err, ErrPhoneAlreadyBound) ||
+			(errors.As(err, &constraint) && constraint.Code == "23505" && constraint.Constraint == "auth_identities_phone_per_user") {
 			return ErrPhoneAlreadyBound
 		}
 		return ErrServiceUnavailable
