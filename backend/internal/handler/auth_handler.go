@@ -731,7 +731,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	if req.RefreshToken != "" {
 		if err := h.authService.RevokeRefreshToken(c.Request.Context(), req.RefreshToken); err != nil {
 			slog.Debug("failed to revoke refresh token", "error", err)
-			// 不影响登出流程
+			response.ErrorFrom(c, service.ErrServiceUnavailable)
+			return
 		}
 	}
 	h.consumePendingOAuthSessionOnLogout(c)

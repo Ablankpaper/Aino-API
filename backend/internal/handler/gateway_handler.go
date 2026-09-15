@@ -611,7 +611,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	currentAPIKey := apiKey
 	currentSubscription := subscription
 	var fallbackGroupID *int64
-	if apiKey.Group != nil {
+	if apiKey.Group != nil && !apiKey.DesktopManaged {
 		fallbackGroupID = apiKey.Group.FallbackGroupIDOnInvalidRequest
 	}
 	fallbackUsed := false

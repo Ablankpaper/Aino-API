@@ -20,6 +20,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
 	"github.com/Wei-Shaw/sub2api/ent/compositemodelroute"
+	"github.com/Wei-Shaw/sub2api/ent/desktopmodelcredential"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
@@ -71,8 +72,12 @@ func init() {
 	apikey.DefaultUpdatedAt = apikeyDescUpdatedAt.Default.(func() time.Time)
 	// apikey.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	apikey.UpdateDefaultUpdatedAt = apikeyDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// apikeyDescDesktopManaged is the schema descriptor for desktop_managed field.
+	apikeyDescDesktopManaged := apikeyFields[0].Descriptor()
+	// apikey.DefaultDesktopManaged holds the default value on creation for the desktop_managed field.
+	apikey.DefaultDesktopManaged = apikeyDescDesktopManaged.Default.(bool)
 	// apikeyDescKey is the schema descriptor for key field.
-	apikeyDescKey := apikeyFields[1].Descriptor()
+	apikeyDescKey := apikeyFields[2].Descriptor()
 	// apikey.KeyValidator is a validator for the "key" field. It is called by the builders before save.
 	apikey.KeyValidator = func() func(string) error {
 		validators := apikeyDescKey.Validators
@@ -90,7 +95,7 @@ func init() {
 		}
 	}()
 	// apikeyDescName is the schema descriptor for name field.
-	apikeyDescName := apikeyFields[2].Descriptor()
+	apikeyDescName := apikeyFields[3].Descriptor()
 	// apikey.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	apikey.NameValidator = func() func(string) error {
 		validators := apikeyDescName.Validators
@@ -108,41 +113,41 @@ func init() {
 		}
 	}()
 	// apikeyDescStatus is the schema descriptor for status field.
-	apikeyDescStatus := apikeyFields[4].Descriptor()
+	apikeyDescStatus := apikeyFields[5].Descriptor()
 	// apikey.DefaultStatus holds the default value on creation for the status field.
 	apikey.DefaultStatus = apikeyDescStatus.Default.(string)
 	// apikey.StatusValidator is a validator for the "status" field. It is called by the builders before save.
 	apikey.StatusValidator = apikeyDescStatus.Validators[0].(func(string) error)
 	// apikeyDescQuota is the schema descriptor for quota field.
-	apikeyDescQuota := apikeyFields[8].Descriptor()
+	apikeyDescQuota := apikeyFields[9].Descriptor()
 	// apikey.DefaultQuota holds the default value on creation for the quota field.
 	apikey.DefaultQuota = apikeyDescQuota.Default.(float64)
 	// apikeyDescQuotaUsed is the schema descriptor for quota_used field.
-	apikeyDescQuotaUsed := apikeyFields[9].Descriptor()
+	apikeyDescQuotaUsed := apikeyFields[10].Descriptor()
 	// apikey.DefaultQuotaUsed holds the default value on creation for the quota_used field.
 	apikey.DefaultQuotaUsed = apikeyDescQuotaUsed.Default.(float64)
 	// apikeyDescRateLimit5h is the schema descriptor for rate_limit_5h field.
-	apikeyDescRateLimit5h := apikeyFields[11].Descriptor()
+	apikeyDescRateLimit5h := apikeyFields[12].Descriptor()
 	// apikey.DefaultRateLimit5h holds the default value on creation for the rate_limit_5h field.
 	apikey.DefaultRateLimit5h = apikeyDescRateLimit5h.Default.(float64)
 	// apikeyDescRateLimit1d is the schema descriptor for rate_limit_1d field.
-	apikeyDescRateLimit1d := apikeyFields[12].Descriptor()
+	apikeyDescRateLimit1d := apikeyFields[13].Descriptor()
 	// apikey.DefaultRateLimit1d holds the default value on creation for the rate_limit_1d field.
 	apikey.DefaultRateLimit1d = apikeyDescRateLimit1d.Default.(float64)
 	// apikeyDescRateLimit7d is the schema descriptor for rate_limit_7d field.
-	apikeyDescRateLimit7d := apikeyFields[13].Descriptor()
+	apikeyDescRateLimit7d := apikeyFields[14].Descriptor()
 	// apikey.DefaultRateLimit7d holds the default value on creation for the rate_limit_7d field.
 	apikey.DefaultRateLimit7d = apikeyDescRateLimit7d.Default.(float64)
 	// apikeyDescUsage5h is the schema descriptor for usage_5h field.
-	apikeyDescUsage5h := apikeyFields[14].Descriptor()
+	apikeyDescUsage5h := apikeyFields[15].Descriptor()
 	// apikey.DefaultUsage5h holds the default value on creation for the usage_5h field.
 	apikey.DefaultUsage5h = apikeyDescUsage5h.Default.(float64)
 	// apikeyDescUsage1d is the schema descriptor for usage_1d field.
-	apikeyDescUsage1d := apikeyFields[15].Descriptor()
+	apikeyDescUsage1d := apikeyFields[16].Descriptor()
 	// apikey.DefaultUsage1d holds the default value on creation for the usage_1d field.
 	apikey.DefaultUsage1d = apikeyDescUsage1d.Default.(float64)
 	// apikeyDescUsage7d is the schema descriptor for usage_7d field.
-	apikeyDescUsage7d := apikeyFields[16].Descriptor()
+	apikeyDescUsage7d := apikeyFields[17].Descriptor()
 	// apikey.DefaultUsage7d holds the default value on creation for the usage_7d field.
 	apikey.DefaultUsage7d = apikeyDescUsage7d.Default.(float64)
 	accountMixin := schema.Account{}.Mixin()
@@ -927,6 +932,41 @@ func init() {
 	compositemodelrouteDescEnabled := compositemodelrouteFields[7].Descriptor()
 	// compositemodelroute.DefaultEnabled holds the default value on creation for the enabled field.
 	compositemodelroute.DefaultEnabled = compositemodelrouteDescEnabled.Default.(bool)
+	desktopmodelcredentialMixin := schema.DesktopModelCredential{}.Mixin()
+	desktopmodelcredentialMixinFields0 := desktopmodelcredentialMixin[0].Fields()
+	_ = desktopmodelcredentialMixinFields0
+	desktopmodelcredentialFields := schema.DesktopModelCredential{}.Fields()
+	_ = desktopmodelcredentialFields
+	// desktopmodelcredentialDescCreatedAt is the schema descriptor for created_at field.
+	desktopmodelcredentialDescCreatedAt := desktopmodelcredentialMixinFields0[0].Descriptor()
+	// desktopmodelcredential.DefaultCreatedAt holds the default value on creation for the created_at field.
+	desktopmodelcredential.DefaultCreatedAt = desktopmodelcredentialDescCreatedAt.Default.(func() time.Time)
+	// desktopmodelcredentialDescUpdatedAt is the schema descriptor for updated_at field.
+	desktopmodelcredentialDescUpdatedAt := desktopmodelcredentialMixinFields0[1].Descriptor()
+	// desktopmodelcredential.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	desktopmodelcredential.DefaultUpdatedAt = desktopmodelcredentialDescUpdatedAt.Default.(func() time.Time)
+	// desktopmodelcredential.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	desktopmodelcredential.UpdateDefaultUpdatedAt = desktopmodelcredentialDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// desktopmodelcredentialDescDeviceID is the schema descriptor for device_id field.
+	desktopmodelcredentialDescDeviceID := desktopmodelcredentialFields[2].Descriptor()
+	// desktopmodelcredential.DeviceIDValidator is a validator for the "device_id" field. It is called by the builders before save.
+	desktopmodelcredential.DeviceIDValidator = desktopmodelcredentialDescDeviceID.Validators[0].(func(string) error)
+	// desktopmodelcredentialDescConnectionGrantID is the schema descriptor for connection_grant_id field.
+	desktopmodelcredentialDescConnectionGrantID := desktopmodelcredentialFields[3].Descriptor()
+	// desktopmodelcredential.ConnectionGrantIDValidator is a validator for the "connection_grant_id" field. It is called by the builders before save.
+	desktopmodelcredential.ConnectionGrantIDValidator = desktopmodelcredentialDescConnectionGrantID.Validators[0].(func(string) error)
+	// desktopmodelcredentialDescSessionFamilyID is the schema descriptor for session_family_id field.
+	desktopmodelcredentialDescSessionFamilyID := desktopmodelcredentialFields[4].Descriptor()
+	// desktopmodelcredential.SessionFamilyIDValidator is a validator for the "session_family_id" field. It is called by the builders before save.
+	desktopmodelcredential.SessionFamilyIDValidator = desktopmodelcredentialDescSessionFamilyID.Validators[0].(func(string) error)
+	// desktopmodelcredentialDescModelID is the schema descriptor for model_id field.
+	desktopmodelcredentialDescModelID := desktopmodelcredentialFields[7].Descriptor()
+	// desktopmodelcredential.ModelIDValidator is a validator for the "model_id" field. It is called by the builders before save.
+	desktopmodelcredential.ModelIDValidator = desktopmodelcredentialDescModelID.Validators[0].(func(string) error)
+	// desktopmodelcredentialDescRevokeReason is the schema descriptor for revoke_reason field.
+	desktopmodelcredentialDescRevokeReason := desktopmodelcredentialFields[11].Descriptor()
+	// desktopmodelcredential.RevokeReasonValidator is a validator for the "revoke_reason" field. It is called by the builders before save.
+	desktopmodelcredential.RevokeReasonValidator = desktopmodelcredentialDescRevokeReason.Validators[0].(func(string) error)
 	errorpassthroughruleMixin := schema.ErrorPassthroughRule{}.Mixin()
 	errorpassthroughruleMixinFields0 := errorpassthroughruleMixin[0].Fields()
 	_ = errorpassthroughruleMixinFields0

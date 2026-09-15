@@ -292,6 +292,7 @@ type ChangePasswordRequest struct {
 
 // UserService 用户服务
 type UserService struct {
+	desktopRevoker       DesktopCredentialRevoker
 	userRepo             UserRepository
 	settingRepo          SettingRepository
 	authCacheInvalidator APIKeyAuthCacheInvalidator
@@ -1057,6 +1058,10 @@ func (s *UserService) ChangePassword(ctx context.Context, userID int64, req Chan
 	// 指纹推导），改密写回 password_hash 即可让旧 token 失效。
 	if err := s.userRepo.Update(ctx, user, UserUpdateFields{PasswordHash: true}); err != nil {
 		return fmt.Errorf("update user: %w", err)
+	}
+
+	if s.desktopRevoker != nil {
+		return s.desktopRevoker.RevokeUser(ctx, userID, "password_changed")
 	}
 
 	return nil

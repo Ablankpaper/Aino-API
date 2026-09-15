@@ -41,12 +41,19 @@ func NewRefreshTokenCache(rdb *redis.Client) service.RefreshTokenCache {
 }
 
 func (c *refreshTokenCache) StoreRefreshToken(ctx context.Context, tokenHash string, data *service.RefreshTokenData, ttl time.Duration) error {
-	key := refreshTokenKey(tokenHash)
 	val, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("marshal refresh token data: %w", err)
 	}
-	return c.rdb.Set(ctx, key, val, ttl).Err()
+	return c.storeIndexedRefreshToken(ctx, tokenHash, data, string(val), ttl)
+}
+
+func (c *refreshTokenCache) RotateRefreshToken(ctx context.Context, oldHash, newHash string, data *service.RefreshTokenData, ttl time.Duration) error {
+	val, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return c.replaceIndexedRefreshToken(ctx, oldHash, newHash, data, string(val), ttl)
 }
 
 func (c *refreshTokenCache) GetRefreshToken(ctx context.Context, tokenHash string) (*service.RefreshTokenData, error) {
@@ -71,75 +78,21 @@ func (c *refreshTokenCache) DeleteRefreshToken(ctx context.Context, tokenHash st
 }
 
 func (c *refreshTokenCache) DeleteUserRefreshTokens(ctx context.Context, userID int64) error {
-	// Get all token hashes for this user
-	tokenHashes, err := c.GetUserTokenHashes(ctx, userID)
-	if err != nil && err != redis.Nil {
-		return fmt.Errorf("get user token hashes: %w", err)
-	}
-
-	if len(tokenHashes) == 0 {
-		return nil
-	}
-
-	// Build keys to delete
-	keys := make([]string, 0, len(tokenHashes)+1)
-	for _, hash := range tokenHashes {
-		keys = append(keys, refreshTokenKey(hash))
-	}
-	keys = append(keys, userRefreshTokensKey(userID))
-
-	// Delete all keys in a pipeline
-	pipe := c.rdb.Pipeline()
-	for _, key := range keys {
-		pipe.Del(ctx, key)
-	}
-	_, err = pipe.Exec(ctx)
-	return err
+	return revokeUserRefreshFamilies.Run(ctx, c.rdb, []string{userRefreshTokensKey(userID), userTokenFamiliesKey(userID)}, refreshTokenKeyPrefix, tokenFamilyPrefix, revokedFamilyMember).Err()
 }
 
 func (c *refreshTokenCache) DeleteTokenFamily(ctx context.Context, familyID string) error {
-	// Get all token hashes in this family
-	tokenHashes, err := c.GetFamilyTokenHashes(ctx, familyID)
-	if err != nil && err != redis.Nil {
-		return fmt.Errorf("get family token hashes: %w", err)
-	}
-
-	if len(tokenHashes) == 0 {
-		return nil
-	}
-
-	// Build keys to delete
-	keys := make([]string, 0, len(tokenHashes)+1)
-	for _, hash := range tokenHashes {
-		keys = append(keys, refreshTokenKey(hash))
-	}
-	keys = append(keys, tokenFamilyKey(familyID))
-
-	// Delete all keys in a pipeline
-	pipe := c.rdb.Pipeline()
-	for _, key := range keys {
-		pipe.Del(ctx, key)
-	}
-	_, err = pipe.Exec(ctx)
-	return err
+	return revokeRefreshFamily.Run(ctx, c.rdb, []string{tokenFamilyKey(familyID)}, refreshTokenKeyPrefix, revokedFamilyMember).Err()
 }
 
 func (c *refreshTokenCache) AddToUserTokenSet(ctx context.Context, userID int64, tokenHash string, ttl time.Duration) error {
 	key := userRefreshTokensKey(userID)
-	pipe := c.rdb.Pipeline()
-	pipe.SAdd(ctx, key, tokenHash)
-	pipe.Expire(ctx, key, ttl)
-	_, err := pipe.Exec(ctx)
-	return err
+	return addRefreshIndex.Run(ctx, c.rdb, []string{key}, tokenHash, ttl.Milliseconds(), revokedFamilyMember).Err()
 }
 
 func (c *refreshTokenCache) AddToFamilyTokenSet(ctx context.Context, familyID string, tokenHash string, ttl time.Duration) error {
 	key := tokenFamilyKey(familyID)
-	pipe := c.rdb.Pipeline()
-	pipe.SAdd(ctx, key, tokenHash)
-	pipe.Expire(ctx, key, ttl)
-	_, err := pipe.Exec(ctx)
-	return err
+	return addRefreshIndex.Run(ctx, c.rdb, []string{key}, tokenHash, ttl.Milliseconds(), revokedFamilyMember).Err()
 }
 
 func (c *refreshTokenCache) GetUserTokenHashes(ctx context.Context, userID int64) ([]string, error) {
@@ -149,7 +102,17 @@ func (c *refreshTokenCache) GetUserTokenHashes(ctx context.Context, userID int64
 
 func (c *refreshTokenCache) GetFamilyTokenHashes(ctx context.Context, familyID string) ([]string, error) {
 	key := tokenFamilyKey(familyID)
-	return c.rdb.SMembers(ctx, key).Result()
+	hashes, err := c.rdb.SMembers(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]string, 0, len(hashes))
+	for _, hash := range hashes {
+		if hash != revokedFamilyMember {
+			result = append(result, hash)
+		}
+	}
+	return result, nil
 }
 
 func (c *refreshTokenCache) IsTokenInFamily(ctx context.Context, familyID string, tokenHash string) (bool, error) {

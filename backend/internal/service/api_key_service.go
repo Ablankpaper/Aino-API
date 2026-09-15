@@ -283,6 +283,9 @@ type RateLimitCacheInvalidator interface {
 }
 
 type APIKeyService struct {
+	desktopRepo               DesktopCredentialRepository
+	desktopRefreshCache       RefreshTokenCache
+	desktopSettings           *SettingService
 	apiKeyRepo                APIKeyRepository
 	userRepo                  UserRepository
 	groupRepo                 GroupRepository
@@ -768,6 +771,9 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	// 验证所有权
 	if apiKey.UserID != userID {
 		return nil, ErrInsufficientPerms
+	}
+	if apiKey.DesktopManaged {
+		return nil, infraerrors.Forbidden("DESKTOP_CREDENTIAL_MANAGED", "managed keys can only be revoked or renewed through desktop authorization")
 	}
 
 	// 验证 IP 白名单格式

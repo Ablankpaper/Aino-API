@@ -94,6 +94,7 @@ export default {
     noGroupFound: 'No groups found',
     created: 'Created',
     copyToClipboard: 'Copy to clipboard',
+    desktopManaged: 'Aino desktop managed (delete to revoke)',
     copied: 'Copied!',
     importToCcSwitch: 'Import to CCS',
     enable: 'Enable',

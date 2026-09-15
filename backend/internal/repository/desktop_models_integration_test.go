@@ -19,6 +19,8 @@ import (
 )
 
 type desktopModelRig struct {
+	keys           *service.APIKeyService
+	desktopHandler *handler.DesktopHandler
 	*phoneAuthFlowRig
 	models  *service.DesktopModelService
 	groups  service.GroupRepository
@@ -35,8 +37,8 @@ func newDesktopModelRig(t *testing.T) *desktopModelRig {
 	groups := repository.NewGroupRepository(r.client, db)
 	subs := repository.NewUserSubscriptionRepository(r.client)
 	rates := repository.NewUserGroupRateRepository(db)
-	cfg := &config.Config{}
-	keys := service.NewAPIKeyService(repository.NewAPIKeyRepository(r.client, db), r.userRepo, groups, subs, rates, nil, cfg)
+	cfg := &config.Config{APIKeyAuth: config.APIKeyAuthCacheConfig{L2TTLSeconds: 60}}
+	keys := service.NewAPIKeyService(repository.NewAPIKeyRepository(r.client, db), r.userRepo, groups, subs, rates, repository.NewAPIKeyCache(r.redis), cfg)
 	billing := service.NewBillingService(cfg, nil)
 	channels := service.NewChannelService(repository.NewChannelRepository(db), groups, nil, nil, nil)
 	pricing := service.NewModelPricingResolver(channels, billing)
@@ -44,7 +46,8 @@ func newDesktopModelRig(t *testing.T) *desktopModelRig {
 	t.Cleanup(eligibility.Stop)
 	r.settings.SetDefaultSubscriptionGroupReader(groups)
 	models := service.NewDesktopModelService(r.settings, keys, billing, pricing, eligibility, service.NewCompositeRouteResolver(repository.NewCompositeModelRouteRepository(r.client)))
-	routes.RegisterDesktopRoutes(r.router.Group("/api/v1"), &handler.Handlers{Desktop: handler.NewDesktopHandler(models)}, middleware.NewJWTAuthMiddleware(r.auth, r.users, r.settings, nil), r.settings, middleware.NewPanelRateLimiter(r.redis, r.settings))
+	desktopHandler := handler.NewDesktopHandler(models)
+	routes.RegisterDesktopRoutes(r.router.Group("/api/v1"), &handler.Handlers{Desktop: desktopHandler}, middleware.NewJWTAuthMiddleware(r.auth, r.users, r.settings, nil), r.settings, middleware.NewPanelRateLimiter(r.redis, r.settings))
 	for _, key := range []string{"desktop.enabled", "desktop.models", "desktop.default_model_id", "desktop.credential_ttl_seconds"} {
 		before, err := r.settingRepo.GetValue(r.ctx, key)
 		t.Cleanup(func() {
@@ -55,7 +58,7 @@ func newDesktopModelRig(t *testing.T) *desktopModelRig {
 			}
 		})
 	}
-	return &desktopModelRig{phoneAuthFlowRig: r, models: models, groups: groups, subs: subs, rates: rates, billing: billing, pricing: pricing}
+	return &desktopModelRig{phoneAuthFlowRig: r, models: models, groups: groups, subs: subs, rates: rates, billing: billing, pricing: pricing, keys: keys, desktopHandler: desktopHandler}
 }
 
 func (r *desktopModelRig) group(t *testing.T, subscription bool) *service.Group {

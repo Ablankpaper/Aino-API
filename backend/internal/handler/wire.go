@@ -249,7 +249,7 @@ var ProviderSet = wire.NewSet(
 	NewModelPlazaHandler,
 	NewAsyncImageHandler,
 	ProvideBatchImageHandler,
-	NewDesktopHandler,
+	ProvideDesktopHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

@@ -172,6 +172,8 @@ const DataTableStub = {
           <slot name="cell-id" :value="row.id" :row="row" />
         </div>
         <slot name="cell-name" :value="row.name" :row="row" />
+        <slot name="cell-key" :value="row.key" :row="row" />
+        <slot name="cell-group" :row="row" />
         <slot name="cell-actions" :row="row" />
         <div data-test="current-concurrency">
           <slot name="cell-current_concurrency" :value="row.current_concurrency" :row="row" />
@@ -290,6 +292,21 @@ describe('user KeysView column settings', () => {
     getAvailableGroups.mockResolvedValue([])
     getUserGroupRates.mockResolvedValue({})
     isCurrentStep.mockReturnValue(false)
+  })
+
+  it('offers deletion without copy, import, editing or reactivation for managed keys', async () => {
+    listKeys.mockResolvedValueOnce({ items: [{ ...createApiKey(), key: '', desktop_managed: true }], total: 1, page: 1, page_size: 20, pages: 1 })
+    const wrapper = await mountView()
+    expect(wrapper.text()).toContain('keys.desktopManaged')
+    expect(wrapper.find('button[title="keys.copyToClipboard"]').exists()).toBe(false)
+    for (const label of ['keys.useKey', 'keys.importToCcSwitch', 'keys.disable', 'common.edit']) {
+      expect(wrapper.findAll('button').some(button => button.text().includes(label))).toBe(false)
+    }
+    expect(wrapper.get('button[title="keys.desktopManaged"]').attributes('disabled')).toBeDefined()
+    await getButtonByText(wrapper, 'common.delete').trigger('click')
+    expect(wrapper.findComponent({ name: 'ConfirmDialog' }).props('show')).toBe(true)
+    expect(updateKey).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it.each([

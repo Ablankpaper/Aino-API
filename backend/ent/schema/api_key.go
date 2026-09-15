@@ -33,6 +33,7 @@ func (APIKey) Mixin() []ent.Mixin {
 
 func (APIKey) Fields() []ent.Field {
 	return []ent.Field{
+		field.Bool("desktop_managed").Default(false).Immutable(),
 		field.Int64("user_id"),
 		field.String("key").
 			MaxLen(128).
@@ -130,6 +131,7 @@ func (APIKey) Edges() []ent.Edge {
 			Field("group_id").
 			Unique(),
 		edge.To("usage_logs", UsageLog.Type),
+		edge.To("desktop_model_credentials", DesktopModelCredential.Type),
 	}
 }
 

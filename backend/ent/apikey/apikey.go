@@ -21,6 +21,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
+	// FieldDesktopManaged holds the string denoting the desktop_managed field in the database.
+	FieldDesktopManaged = "desktop_managed"
 	// FieldUserID holds the string denoting the user_id field in the database.
 	FieldUserID = "user_id"
 	// FieldKey holds the string denoting the key field in the database.
@@ -67,6 +69,8 @@ const (
 	EdgeGroup = "group"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeDesktopModelCredentials holds the string denoting the desktop_model_credentials edge name in mutations.
+	EdgeDesktopModelCredentials = "desktop_model_credentials"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -90,6 +94,13 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "api_key_id"
+	// DesktopModelCredentialsTable is the table that holds the desktop_model_credentials relation/edge.
+	DesktopModelCredentialsTable = "desktop_model_credentials"
+	// DesktopModelCredentialsInverseTable is the table name for the DesktopModelCredential entity.
+	// It exists in this package in order to avoid circular dependency with the "desktopmodelcredential" package.
+	DesktopModelCredentialsInverseTable = "desktop_model_credentials"
+	// DesktopModelCredentialsColumn is the table column denoting the desktop_model_credentials relation/edge.
+	DesktopModelCredentialsColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -98,6 +109,7 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldDeletedAt,
+	FieldDesktopManaged,
 	FieldUserID,
 	FieldKey,
 	FieldName,
@@ -144,6 +156,8 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultDesktopManaged holds the default value on creation for the "desktop_managed" field.
+	DefaultDesktopManaged bool
 	// KeyValidator is a validator for the "key" field. It is called by the builders before save.
 	KeyValidator func(string) error
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
@@ -191,6 +205,11 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByDeletedAt orders the results by the deleted_at field.
 func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
+}
+
+// ByDesktopManaged orders the results by the desktop_managed field.
+func ByDesktopManaged(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDesktopManaged, opts...).ToFunc()
 }
 
 // ByUserID orders the results by the user_id field.
@@ -310,6 +329,20 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newUsageLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByDesktopModelCredentialsCount orders the results by desktop_model_credentials count.
+func ByDesktopModelCredentialsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDesktopModelCredentialsStep(), opts...)
+	}
+}
+
+// ByDesktopModelCredentials orders the results by desktop_model_credentials terms.
+func ByDesktopModelCredentials(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDesktopModelCredentialsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -329,5 +362,12 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newDesktopModelCredentialsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DesktopModelCredentialsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DesktopModelCredentialsTable, DesktopModelCredentialsColumn),
 	)
 }

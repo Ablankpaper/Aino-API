@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
+	"github.com/Wei-Shaw/sub2api/ent/desktopmodelcredential"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
@@ -63,6 +64,20 @@ func (_c *APIKeyCreate) SetDeletedAt(v time.Time) *APIKeyCreate {
 func (_c *APIKeyCreate) SetNillableDeletedAt(v *time.Time) *APIKeyCreate {
 	if v != nil {
 		_c.SetDeletedAt(*v)
+	}
+	return _c
+}
+
+// SetDesktopManaged sets the "desktop_managed" field.
+func (_c *APIKeyCreate) SetDesktopManaged(v bool) *APIKeyCreate {
+	_c.mutation.SetDesktopManaged(v)
+	return _c
+}
+
+// SetNillableDesktopManaged sets the "desktop_managed" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableDesktopManaged(v *bool) *APIKeyCreate {
+	if v != nil {
+		_c.SetDesktopManaged(*v)
 	}
 	return _c
 }
@@ -332,6 +347,21 @@ func (_c *APIKeyCreate) AddUsageLogs(v ...*UsageLog) *APIKeyCreate {
 	return _c.AddUsageLogIDs(ids...)
 }
 
+// AddDesktopModelCredentialIDs adds the "desktop_model_credentials" edge to the DesktopModelCredential entity by IDs.
+func (_c *APIKeyCreate) AddDesktopModelCredentialIDs(ids ...int64) *APIKeyCreate {
+	_c.mutation.AddDesktopModelCredentialIDs(ids...)
+	return _c
+}
+
+// AddDesktopModelCredentials adds the "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_c *APIKeyCreate) AddDesktopModelCredentials(v ...*DesktopModelCredential) *APIKeyCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDesktopModelCredentialIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_c *APIKeyCreate) Mutation() *APIKeyMutation {
 	return _c.mutation
@@ -383,6 +413,10 @@ func (_c *APIKeyCreate) defaults() error {
 		v := apikey.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.DesktopManaged(); !ok {
+		v := apikey.DefaultDesktopManaged
+		_c.mutation.SetDesktopManaged(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := apikey.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -429,6 +463,9 @@ func (_c *APIKeyCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "APIKey.updated_at"`)}
+	}
+	if _, ok := _c.mutation.DesktopManaged(); !ok {
+		return &ValidationError{Name: "desktop_managed", err: errors.New(`ent: missing required field "APIKey.desktop_managed"`)}
 	}
 	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "APIKey.user_id"`)}
@@ -522,6 +559,10 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(apikey.FieldDeletedAt, field.TypeTime, value)
 		_node.DeletedAt = &value
+	}
+	if value, ok := _c.mutation.DesktopManaged(); ok {
+		_spec.SetField(apikey.FieldDesktopManaged, field.TypeBool, value)
+		_node.DesktopManaged = value
 	}
 	if value, ok := _c.mutation.Key(); ok {
 		_spec.SetField(apikey.FieldKey, field.TypeString, value)
@@ -638,6 +679,22 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DesktopModelCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.DesktopModelCredentialsTable,
+			Columns: []string{apikey.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -1076,6 +1133,9 @@ func (u *APIKeyUpsertOne) UpdateNewValues() *APIKeyUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(apikey.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.DesktopManaged(); exists {
+			s.SetIgnore(apikey.FieldDesktopManaged)
 		}
 	}))
 	return u
@@ -1713,6 +1773,9 @@ func (u *APIKeyUpsertBulk) UpdateNewValues() *APIKeyUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(apikey.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.DesktopManaged(); exists {
+				s.SetIgnore(apikey.FieldDesktopManaged)
 			}
 		}
 	}))

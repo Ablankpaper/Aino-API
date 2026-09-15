@@ -1699,6 +1699,29 @@ func HasPlatformQuotasWith(preds ...predicate.UserPlatformQuota) predicate.User 
 	})
 }
 
+// HasDesktopModelCredentials applies the HasEdge predicate on the "desktop_model_credentials" edge.
+func HasDesktopModelCredentials() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DesktopModelCredentialsTable, DesktopModelCredentialsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDesktopModelCredentialsWith applies the HasEdge predicate on the "desktop_model_credentials" edge with a given conditions (other predicates).
+func HasDesktopModelCredentialsWith(preds ...predicate.DesktopModelCredential) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newDesktopModelCredentialsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasUserAllowedGroups applies the HasEdge predicate on the "user_allowed_groups" edge.
 func HasUserAllowedGroups() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

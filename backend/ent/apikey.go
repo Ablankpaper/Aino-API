@@ -26,6 +26,8 @@ type APIKey struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	// DesktopManaged holds the value of the "desktop_managed" field.
+	DesktopManaged bool `json:"desktop_managed,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int64 `json:"user_id,omitempty"`
 	// Key holds the value of the "key" field.
@@ -80,9 +82,11 @@ type APIKeyEdges struct {
 	Group *Group `json:"group,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// DesktopModelCredentials holds the value of the desktop_model_credentials edge.
+	DesktopModelCredentials []*DesktopModelCredential `json:"desktop_model_credentials,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -116,6 +120,15 @@ func (e APIKeyEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 	return nil, &NotLoadedError{edge: "usage_logs"}
 }
 
+// DesktopModelCredentialsOrErr returns the DesktopModelCredentials value or an error if the edge
+// was not loaded in eager-loading.
+func (e APIKeyEdges) DesktopModelCredentialsOrErr() ([]*DesktopModelCredential, error) {
+	if e.loadedTypes[3] {
+		return e.DesktopModelCredentials, nil
+	}
+	return nil, &NotLoadedError{edge: "desktop_model_credentials"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*APIKey) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -123,6 +136,8 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case apikey.FieldIPWhitelist, apikey.FieldIPBlacklist:
 			values[i] = new([]byte)
+		case apikey.FieldDesktopManaged:
+			values[i] = new(sql.NullBool)
 		case apikey.FieldQuota, apikey.FieldQuotaUsed, apikey.FieldRateLimit5h, apikey.FieldRateLimit1d, apikey.FieldRateLimit7d, apikey.FieldUsage5h, apikey.FieldUsage1d, apikey.FieldUsage7d:
 			values[i] = new(sql.NullFloat64)
 		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID:
@@ -170,6 +185,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DeletedAt = new(time.Time)
 				*_m.DeletedAt = value.Time
+			}
+		case apikey.FieldDesktopManaged:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field desktop_managed", values[i])
+			} else if value.Valid {
+				_m.DesktopManaged = value.Bool
 			}
 		case apikey.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -329,6 +350,11 @@ func (_m *APIKey) QueryUsageLogs() *UsageLogQuery {
 	return NewAPIKeyClient(_m.config).QueryUsageLogs(_m)
 }
 
+// QueryDesktopModelCredentials queries the "desktop_model_credentials" edge of the APIKey entity.
+func (_m *APIKey) QueryDesktopModelCredentials() *DesktopModelCredentialQuery {
+	return NewAPIKeyClient(_m.config).QueryDesktopModelCredentials(_m)
+}
+
 // Update returns a builder for updating this APIKey.
 // Note that you need to call APIKey.Unwrap() before calling this method if this APIKey
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -362,6 +388,9 @@ func (_m *APIKey) String() string {
 		builder.WriteString("deleted_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("desktop_managed=")
+	builder.WriteString(fmt.Sprintf("%v", _m.DesktopManaged))
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UserID))

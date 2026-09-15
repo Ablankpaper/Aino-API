@@ -99,6 +99,7 @@ func ProvideAuthService(
 	defaultSubAssigner DefaultSubscriptionAssigner,
 	affiliateService *AffiliateService,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
+	desktopRepo DesktopCredentialRepository,
 ) *AuthService {
 	svc := NewAuthService(
 		entClient,
@@ -118,6 +119,7 @@ func ProvideAuthService(
 	svc.SetTencentCaptchaService(tencentCaptchaService)
 	svc.SetAliyunCaptchaService(aliyunCaptchaService)
 	svc.SetSMSService(smsService)
+	svc.SetDesktopCredentialRevoker(desktopRepo)
 	return svc
 }
 
@@ -841,10 +843,14 @@ func ProvideAPIKeyService(
 	cfg *config.Config,
 	billingCacheService *BillingCacheService,
 	concurrencyService *ConcurrencyService,
+	desktopRepo DesktopCredentialRepository,
+	refreshCache RefreshTokenCache,
+	settings *SettingService,
 ) *APIKeyService {
 	svc := NewAPIKeyService(apiKeyRepo, userRepo, groupRepo, userSubRepo, userGroupRateRepo, cache, cfg)
 	svc.SetRateLimitCacheInvalidator(billingCacheService)
 	svc.SetConcurrencyService(concurrencyService)
+	svc.SetDesktopCredentialDependencies(desktopRepo, refreshCache, settings)
 	return svc
 }
 
@@ -854,7 +860,7 @@ var ProviderSet = wire.NewSet(
 	ProvideAuthService,
 	ProvideSMSService,
 	NewPasskeyService,
-	NewUserService,
+	ProvideDesktopAwareUserService,
 	ProvideAPIKeyService,
 	ProvideAPIKeyAuthCacheInvalidator,
 	ProvideAuthCacheInvalidationWorker,
@@ -966,6 +972,7 @@ var ProviderSet = wire.NewSet(
 	NewModelPricingResolver,
 	NewModelPlazaService,
 	NewDesktopModelService,
+	NewDesktopCredentialService,
 	NewContentModerationService,
 	NewAffiliateService,
 	ProvidePaymentConfigService,

@@ -150,6 +150,8 @@ const (
 	FieldProfitSafetyBuffer = "profit_safety_buffer"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
 	EdgeAPIKeys = "api_keys"
+	// EdgeDesktopModelCredentials holds the string denoting the desktop_model_credentials edge name in mutations.
+	EdgeDesktopModelCredentials = "desktop_model_credentials"
 	// EdgeRedeemCodes holds the string denoting the redeem_codes edge name in mutations.
 	EdgeRedeemCodes = "redeem_codes"
 	// EdgeSubscriptions holds the string denoting the subscriptions edge name in mutations.
@@ -173,6 +175,13 @@ const (
 	APIKeysInverseTable = "api_keys"
 	// APIKeysColumn is the table column denoting the api_keys relation/edge.
 	APIKeysColumn = "group_id"
+	// DesktopModelCredentialsTable is the table that holds the desktop_model_credentials relation/edge.
+	DesktopModelCredentialsTable = "desktop_model_credentials"
+	// DesktopModelCredentialsInverseTable is the table name for the DesktopModelCredential entity.
+	// It exists in this package in order to avoid circular dependency with the "desktopmodelcredential" package.
+	DesktopModelCredentialsInverseTable = "desktop_model_credentials"
+	// DesktopModelCredentialsColumn is the table column denoting the desktop_model_credentials relation/edge.
+	DesktopModelCredentialsColumn = "group_id"
 	// RedeemCodesTable is the table that holds the redeem_codes relation/edge.
 	RedeemCodesTable = "redeem_codes"
 	// RedeemCodesInverseTable is the table name for the RedeemCode entity.
@@ -748,6 +757,20 @@ func ByAPIKeys(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByDesktopModelCredentialsCount orders the results by desktop_model_credentials count.
+func ByDesktopModelCredentialsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDesktopModelCredentialsStep(), opts...)
+	}
+}
+
+// ByDesktopModelCredentials orders the results by desktop_model_credentials terms.
+func ByDesktopModelCredentials(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDesktopModelCredentialsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByRedeemCodesCount orders the results by redeem_codes count.
 func ByRedeemCodesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -850,6 +873,13 @@ func newAPIKeysStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(APIKeysInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, APIKeysTable, APIKeysColumn),
+	)
+}
+func newDesktopModelCredentialsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DesktopModelCredentialsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DesktopModelCredentialsTable, DesktopModelCredentialsColumn),
 	)
 }
 func newRedeemCodesStep() *sqlgraph.Step {

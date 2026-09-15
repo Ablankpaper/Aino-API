@@ -15,6 +15,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
+	"github.com/Wei-Shaw/sub2api/ent/desktopmodelcredential"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
@@ -1233,6 +1234,21 @@ func (_u *GroupUpdate) AddAPIKeys(v ...*APIKey) *GroupUpdate {
 	return _u.AddAPIKeyIDs(ids...)
 }
 
+// AddDesktopModelCredentialIDs adds the "desktop_model_credentials" edge to the DesktopModelCredential entity by IDs.
+func (_u *GroupUpdate) AddDesktopModelCredentialIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.AddDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// AddDesktopModelCredentials adds the "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *GroupUpdate) AddDesktopModelCredentials(v ...*DesktopModelCredential) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDesktopModelCredentialIDs(ids...)
+}
+
 // AddRedeemCodeIDs adds the "redeem_codes" edge to the RedeemCode entity by IDs.
 func (_u *GroupUpdate) AddRedeemCodeIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddRedeemCodeIDs(ids...)
@@ -1332,6 +1348,27 @@ func (_u *GroupUpdate) RemoveAPIKeys(v ...*APIKey) *GroupUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAPIKeyIDs(ids...)
+}
+
+// ClearDesktopModelCredentials clears all "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *GroupUpdate) ClearDesktopModelCredentials() *GroupUpdate {
+	_u.mutation.ClearDesktopModelCredentials()
+	return _u
+}
+
+// RemoveDesktopModelCredentialIDs removes the "desktop_model_credentials" edge to DesktopModelCredential entities by IDs.
+func (_u *GroupUpdate) RemoveDesktopModelCredentialIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.RemoveDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveDesktopModelCredentials removes "desktop_model_credentials" edges to DesktopModelCredential entities.
+func (_u *GroupUpdate) RemoveDesktopModelCredentials(v ...*DesktopModelCredential) *GroupUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDesktopModelCredentialIDs(ids...)
 }
 
 // ClearRedeemCodes clears all "redeem_codes" edges to the RedeemCode entity.
@@ -1955,6 +1992,51 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.DesktopModelCredentialsTable,
+			Columns: []string{group.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDesktopModelCredentialsIDs(); len(nodes) > 0 && !_u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.DesktopModelCredentialsTable,
+			Columns: []string{group.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DesktopModelCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.DesktopModelCredentialsTable,
+			Columns: []string{group.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -3427,6 +3509,21 @@ func (_u *GroupUpdateOne) AddAPIKeys(v ...*APIKey) *GroupUpdateOne {
 	return _u.AddAPIKeyIDs(ids...)
 }
 
+// AddDesktopModelCredentialIDs adds the "desktop_model_credentials" edge to the DesktopModelCredential entity by IDs.
+func (_u *GroupUpdateOne) AddDesktopModelCredentialIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.AddDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// AddDesktopModelCredentials adds the "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *GroupUpdateOne) AddDesktopModelCredentials(v ...*DesktopModelCredential) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDesktopModelCredentialIDs(ids...)
+}
+
 // AddRedeemCodeIDs adds the "redeem_codes" edge to the RedeemCode entity by IDs.
 func (_u *GroupUpdateOne) AddRedeemCodeIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddRedeemCodeIDs(ids...)
@@ -3526,6 +3623,27 @@ func (_u *GroupUpdateOne) RemoveAPIKeys(v ...*APIKey) *GroupUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAPIKeyIDs(ids...)
+}
+
+// ClearDesktopModelCredentials clears all "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *GroupUpdateOne) ClearDesktopModelCredentials() *GroupUpdateOne {
+	_u.mutation.ClearDesktopModelCredentials()
+	return _u
+}
+
+// RemoveDesktopModelCredentialIDs removes the "desktop_model_credentials" edge to DesktopModelCredential entities by IDs.
+func (_u *GroupUpdateOne) RemoveDesktopModelCredentialIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.RemoveDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveDesktopModelCredentials removes "desktop_model_credentials" edges to DesktopModelCredential entities.
+func (_u *GroupUpdateOne) RemoveDesktopModelCredentials(v ...*DesktopModelCredential) *GroupUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDesktopModelCredentialIDs(ids...)
 }
 
 // ClearRedeemCodes clears all "redeem_codes" edges to the RedeemCode entity.
@@ -4179,6 +4297,51 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.DesktopModelCredentialsTable,
+			Columns: []string{group.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDesktopModelCredentialsIDs(); len(nodes) > 0 && !_u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.DesktopModelCredentialsTable,
+			Columns: []string{group.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DesktopModelCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   group.DesktopModelCredentialsTable,
+			Columns: []string{group.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

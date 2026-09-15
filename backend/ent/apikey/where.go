@@ -70,6 +70,11 @@ func DeletedAt(v time.Time) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldDeletedAt, v))
 }
 
+// DesktopManaged applies equality check predicate on the "desktop_managed" field. It's identical to DesktopManagedEQ.
+func DesktopManaged(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldDesktopManaged, v))
+}
+
 // UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
 func UserID(v int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldUserID, v))
@@ -288,6 +293,16 @@ func DeletedAtIsNil() predicate.APIKey {
 // DeletedAtNotNil applies the NotNil predicate on the "deleted_at" field.
 func DeletedAtNotNil() predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotNull(FieldDeletedAt))
+}
+
+// DesktopManagedEQ applies the EQ predicate on the "desktop_managed" field.
+func DesktopManagedEQ(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldDesktopManaged, v))
+}
+
+// DesktopManagedNEQ applies the NEQ predicate on the "desktop_managed" field.
+func DesktopManagedNEQ(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldDesktopManaged, v))
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
@@ -1186,6 +1201,29 @@ func HasUsageLogs() predicate.APIKey {
 func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.APIKey {
 	return predicate.APIKey(func(s *sql.Selector) {
 		step := newUsageLogsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDesktopModelCredentials applies the HasEdge predicate on the "desktop_model_credentials" edge.
+func HasDesktopModelCredentials() predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DesktopModelCredentialsTable, DesktopModelCredentialsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDesktopModelCredentialsWith applies the HasEdge predicate on the "desktop_model_credentials" edge with a given conditions (other predicates).
+func HasDesktopModelCredentialsWith(preds ...predicate.DesktopModelCredential) predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := newDesktopModelCredentialsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

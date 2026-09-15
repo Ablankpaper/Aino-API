@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -72,6 +73,12 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 				return
 			}
 			abortWithGoogleError(c, 500, "Failed to validate API key")
+			return
+		}
+
+		// Desktop leases only authorize the explicitly supported /v1 transports.
+		if apiKey.DesktopManaged {
+			abortWithGoogleError(c, http.StatusForbidden, "Desktop authorization does not support this endpoint")
 			return
 		}
 

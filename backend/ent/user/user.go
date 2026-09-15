@@ -91,6 +91,8 @@ const (
 	EdgePendingAuthSessions = "pending_auth_sessions"
 	// EdgePlatformQuotas holds the string denoting the platform_quotas edge name in mutations.
 	EdgePlatformQuotas = "platform_quotas"
+	// EdgeDesktopModelCredentials holds the string denoting the desktop_model_credentials edge name in mutations.
+	EdgeDesktopModelCredentials = "desktop_model_credentials"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
 	EdgeUserAllowedGroups = "user_allowed_groups"
 	// Table holds the table name of the user in the database.
@@ -184,6 +186,13 @@ const (
 	PlatformQuotasInverseTable = "user_platform_quotas"
 	// PlatformQuotasColumn is the table column denoting the platform_quotas relation/edge.
 	PlatformQuotasColumn = "user_id"
+	// DesktopModelCredentialsTable is the table that holds the desktop_model_credentials relation/edge.
+	DesktopModelCredentialsTable = "desktop_model_credentials"
+	// DesktopModelCredentialsInverseTable is the table name for the DesktopModelCredential entity.
+	// It exists in this package in order to avoid circular dependency with the "desktopmodelcredential" package.
+	DesktopModelCredentialsInverseTable = "desktop_model_credentials"
+	// DesktopModelCredentialsColumn is the table column denoting the desktop_model_credentials relation/edge.
+	DesktopModelCredentialsColumn = "user_id"
 	// UserAllowedGroupsTable is the table that holds the user_allowed_groups relation/edge.
 	UserAllowedGroupsTable = "user_allowed_groups"
 	// UserAllowedGroupsInverseTable is the table name for the UserAllowedGroup entity.
@@ -612,6 +621,20 @@ func ByPlatformQuotas(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByDesktopModelCredentialsCount orders the results by desktop_model_credentials count.
+func ByDesktopModelCredentialsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDesktopModelCredentialsStep(), opts...)
+	}
+}
+
+// ByDesktopModelCredentials orders the results by desktop_model_credentials terms.
+func ByDesktopModelCredentials(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDesktopModelCredentialsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUserAllowedGroupsCount orders the results by user_allowed_groups count.
 func ByUserAllowedGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -714,6 +737,13 @@ func newPlatformQuotasStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PlatformQuotasInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
+	)
+}
+func newDesktopModelCredentialsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DesktopModelCredentialsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DesktopModelCredentialsTable, DesktopModelCredentialsColumn),
 	)
 }
 func newUserAllowedGroupsStep() *sqlgraph.Step {

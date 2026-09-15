@@ -94,6 +94,7 @@ export default {
     noGroupFound: '未找到匹配的分组',
     created: '创建时间',
     copyToClipboard: '复制到剪贴板',
+    desktopManaged: 'Aino 桌面托管（可删除撤销）',
     copied: '已复制！',
     importToCcSwitch: '导入到 CCS',
     enable: '启用',

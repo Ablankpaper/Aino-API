@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
+	"github.com/Wei-Shaw/sub2api/ent/desktopmodelcredential"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -463,6 +464,21 @@ func (_u *APIKeyUpdate) AddUsageLogs(v ...*UsageLog) *APIKeyUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddDesktopModelCredentialIDs adds the "desktop_model_credentials" edge to the DesktopModelCredential entity by IDs.
+func (_u *APIKeyUpdate) AddDesktopModelCredentialIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.AddDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// AddDesktopModelCredentials adds the "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *APIKeyUpdate) AddDesktopModelCredentials(v ...*DesktopModelCredential) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDesktopModelCredentialIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdate) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -499,6 +515,27 @@ func (_u *APIKeyUpdate) RemoveUsageLogs(v ...*UsageLog) *APIKeyUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearDesktopModelCredentials clears all "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *APIKeyUpdate) ClearDesktopModelCredentials() *APIKeyUpdate {
+	_u.mutation.ClearDesktopModelCredentials()
+	return _u
+}
+
+// RemoveDesktopModelCredentialIDs removes the "desktop_model_credentials" edge to DesktopModelCredential entities by IDs.
+func (_u *APIKeyUpdate) RemoveDesktopModelCredentialIDs(ids ...int64) *APIKeyUpdate {
+	_u.mutation.RemoveDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveDesktopModelCredentials removes "desktop_model_credentials" edges to DesktopModelCredential entities.
+func (_u *APIKeyUpdate) RemoveDesktopModelCredentials(v ...*DesktopModelCredential) *APIKeyUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDesktopModelCredentialIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -792,6 +829,51 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.DesktopModelCredentialsTable,
+			Columns: []string{apikey.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDesktopModelCredentialsIDs(); len(nodes) > 0 && !_u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.DesktopModelCredentialsTable,
+			Columns: []string{apikey.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DesktopModelCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.DesktopModelCredentialsTable,
+			Columns: []string{apikey.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -1250,6 +1332,21 @@ func (_u *APIKeyUpdateOne) AddUsageLogs(v ...*UsageLog) *APIKeyUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddDesktopModelCredentialIDs adds the "desktop_model_credentials" edge to the DesktopModelCredential entity by IDs.
+func (_u *APIKeyUpdateOne) AddDesktopModelCredentialIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.AddDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// AddDesktopModelCredentials adds the "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *APIKeyUpdateOne) AddDesktopModelCredentials(v ...*DesktopModelCredential) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDesktopModelCredentialIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdateOne) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -1286,6 +1383,27 @@ func (_u *APIKeyUpdateOne) RemoveUsageLogs(v ...*UsageLog) *APIKeyUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearDesktopModelCredentials clears all "desktop_model_credentials" edges to the DesktopModelCredential entity.
+func (_u *APIKeyUpdateOne) ClearDesktopModelCredentials() *APIKeyUpdateOne {
+	_u.mutation.ClearDesktopModelCredentials()
+	return _u
+}
+
+// RemoveDesktopModelCredentialIDs removes the "desktop_model_credentials" edge to DesktopModelCredential entities by IDs.
+func (_u *APIKeyUpdateOne) RemoveDesktopModelCredentialIDs(ids ...int64) *APIKeyUpdateOne {
+	_u.mutation.RemoveDesktopModelCredentialIDs(ids...)
+	return _u
+}
+
+// RemoveDesktopModelCredentials removes "desktop_model_credentials" edges to DesktopModelCredential entities.
+func (_u *APIKeyUpdateOne) RemoveDesktopModelCredentials(v ...*DesktopModelCredential) *APIKeyUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDesktopModelCredentialIDs(ids...)
 }
 
 // Where appends a list predicates to the APIKeyUpdate builder.
@@ -1609,6 +1727,51 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.DesktopModelCredentialsTable,
+			Columns: []string{apikey.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDesktopModelCredentialsIDs(); len(nodes) > 0 && !_u.mutation.DesktopModelCredentialsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.DesktopModelCredentialsTable,
+			Columns: []string{apikey.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DesktopModelCredentialsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   apikey.DesktopModelCredentialsTable,
+			Columns: []string{apikey.DesktopModelCredentialsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(desktopmodelcredential.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

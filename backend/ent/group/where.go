@@ -2673,6 +2673,29 @@ func HasAPIKeysWith(preds ...predicate.APIKey) predicate.Group {
 	})
 }
 
+// HasDesktopModelCredentials applies the HasEdge predicate on the "desktop_model_credentials" edge.
+func HasDesktopModelCredentials() predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DesktopModelCredentialsTable, DesktopModelCredentialsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDesktopModelCredentialsWith applies the HasEdge predicate on the "desktop_model_credentials" edge with a given conditions (other predicates).
+func HasDesktopModelCredentialsWith(preds ...predicate.DesktopModelCredential) predicate.Group {
+	return predicate.Group(func(s *sql.Selector) {
+		step := newDesktopModelCredentialsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasRedeemCodes applies the HasEdge predicate on the "redeem_codes" edge.
 func HasRedeemCodes() predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
