@@ -1421,6 +1421,8 @@
         </div>
         <!-- /Tab: Gateway -->
 
+        <DesktopModelsSection v-if="form.desktop" v-show="activeTab === 'gateway'" v-model="form.desktop" />
+
         <!-- Tab: Security — Registration, Turnstile, LinuxDo -->
         <div v-show="activeTab === 'security'" class="space-y-6">
           <SmsSettingsSection v-if="form.sms" v-model="form.sms" @validity-change="smsSettingsValid = $event" />
@@ -8877,6 +8879,7 @@ import ImageUpload from "@/components/common/ImageUpload.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
 import SmsSettingsSection from "@/components/admin/settings/SmsSettingsSection.vue";
+import DesktopModelsSection from "@/components/admin/settings/DesktopModelsSection.vue";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
 import { useClipboard } from "@/composables/useClipboard";
 import {
@@ -11271,6 +11274,7 @@ async function saveSettings() {
       claudeOAuthSystemPromptBlocksJSON;
 
     const payload: UpdateSettingsRequest = {
+      desktop: form.desktop,
       sms: form.sms
         ? (({
             enabled,

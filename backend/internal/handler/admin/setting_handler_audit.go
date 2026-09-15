@@ -33,6 +33,9 @@ func (h *SettingHandler) auditSettingsUpdate(c *gin.Context, before *service.Sys
 
 func diffSettings(before *service.SystemSettings, after *service.SystemSettings, beforeAuthSourceDefaults *service.AuthSourceDefaultSettings, afterAuthSourceDefaults *service.AuthSourceDefaultSettings, req UpdateSettingsRequest) []string {
 	changed := make([]string, 0, 20)
+	if req.Desktop != nil && !reflect.DeepEqual(before.Desktop, after.Desktop) {
+		changed = append(changed, "desktop")
+	}
 	if req.SMS != nil && !reflect.DeepEqual(before.SMS, after.SMS) {
 		changed = append(changed, "sms")
 	}

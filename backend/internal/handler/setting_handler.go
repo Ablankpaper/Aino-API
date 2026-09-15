@@ -44,6 +44,8 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 	}
 
 	response.Success(c, dto.PublicSettings{
+		DesktopAPIVersion:                   service.DesktopAPIVersion,
+		DesktopEnabled:                      settings.DesktopEnabled,
 		RegistrationEnabled:                 settings.RegistrationEnabled,
 		PhoneLoginEnabled:                   settings.PhoneLoginEnabled,
 		PhoneRegistrationEnabled:            settings.PhoneRegistrationEnabled,

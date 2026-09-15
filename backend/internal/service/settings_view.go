@@ -13,6 +13,7 @@ func firstNonEmpty(values ...string) string {
 
 type SystemSettings struct {
 	SMS                                 *SMSEditableSettings
+	Desktop                             *DesktopSettings
 	RegistrationEnabled                 bool
 	EmailVerifyEnabled                  bool
 	RegistrationEmailSuffixWhitelist    []string
@@ -325,6 +326,7 @@ type DefaultSubscriptionSetting struct {
 
 type PublicSettings struct {
 	RegistrationEnabled bool
+	DesktopEnabled      bool
 	// Phone capabilities are derived from the server-side SMS configuration.
 	// Secrets and provider credentials are intentionally not part of this view.
 	PhoneLoginEnabled                   bool

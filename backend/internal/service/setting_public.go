@@ -245,6 +245,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	}
 
 	keys = append(keys, smsSettingKeys...)
+	keys = append(keys, "desktop.enabled")
 	settings, err := s.settingRepo.GetMultiple(ctx, keys)
 	if err != nil {
 		return nil, fmt.Errorf("get public settings: %w", err)
@@ -315,6 +316,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	phoneRegions := []string{"CN"}
 
 	return &PublicSettings{
+		DesktopEnabled:                      settings["desktop.enabled"] == "true",
 		RegistrationEnabled:                 settings[SettingKeyRegistrationEnabled] == "true",
 		PhoneLoginEnabled:                   phoneEnabled,
 		PhoneRegistrationEnabled:            phoneEnabled && settings[SettingKeyRegistrationEnabled] == "true",
@@ -580,6 +582,8 @@ func (s *SettingService) IsUserErrorViewAllowed(ctx context.Context) bool {
 // A unit test diffs this struct's JSON keys against dto.PublicSettings to catch
 // drift automatically (see setting_service_injection_test.go).
 type PublicSettingsInjectionPayload struct {
+	DesktopAPIVersion                   int                      `json:"desktop_api_version"`
+	DesktopEnabled                      bool                     `json:"desktop_enabled"`
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
 	PhoneLoginEnabled                   bool                     `json:"phone_login_enabled"`
 	PhoneRegistrationEnabled            bool                     `json:"phone_registration_enabled"`
@@ -679,6 +683,8 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 	}
 
 	return &PublicSettingsInjectionPayload{
+		DesktopAPIVersion:                   DesktopAPIVersion,
+		DesktopEnabled:                      settings.DesktopEnabled,
 		RegistrationEnabled:                 settings.RegistrationEnabled,
 		PhoneLoginEnabled:                   settings.PhoneLoginEnabled,
 		PhoneRegistrationEnabled:            settings.PhoneRegistrationEnabled,

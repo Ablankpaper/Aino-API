@@ -99,6 +99,11 @@ func (s *SettingService) refreshCachedSettingsAfterWrite(ctx context.Context, se
 }
 
 func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, settings *SystemSettings) (map[string]string, error) {
+	if settings.Desktop != nil {
+		if err := s.validateDesktopGroupReferences(ctx, *settings.Desktop); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.validateDefaultSubscriptionGroups(ctx, settings.DefaultSubscriptions); err != nil {
 		return nil, err
 	}
@@ -547,6 +552,15 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	}
 
 	updates[SettingKeyAllowUserViewErrorRequests] = strconv.FormatBool(settings.AllowUserViewErrorRequests)
+	if settings.Desktop != nil {
+		desktopUpdates, err := s.buildDesktopSettingsUpdates(*settings.Desktop)
+		if err != nil {
+			return nil, err
+		}
+		for key, value := range desktopUpdates {
+			updates[key] = value
+		}
+	}
 	if settings.SMS != nil {
 		smsUpdates, err := s.buildSMSSettingsUpdates(*settings.SMS)
 		if err != nil {

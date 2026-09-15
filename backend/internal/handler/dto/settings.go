@@ -28,6 +28,7 @@ type CustomEndpoint struct {
 
 // SystemSettings represents the admin settings API response payload.
 type SystemSettings struct {
+	Desktop                             *service.DesktopSettings `json:"desktop"`
 	SMS                                 *service.SMSSettings     `json:"sms"`
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                     `json:"email_verify_enabled"`
@@ -364,6 +365,8 @@ type DefaultSubscriptionSetting struct {
 }
 
 type PublicSettings struct {
+	DesktopAPIVersion                   int                      `json:"desktop_api_version"`
+	DesktopEnabled                      bool                     `json:"desktop_enabled"`
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
 	PhoneLoginEnabled                   bool                     `json:"phone_login_enabled"`
 	PhoneRegistrationEnabled            bool                     `json:"phone_registration_enabled"`

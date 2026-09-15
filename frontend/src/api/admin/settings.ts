@@ -423,7 +423,30 @@ export function deriveWeChatConnectStoredMode(
 /**
  * System settings interface
  */
+export interface DesktopModelEntry {
+  id: string;
+  group_id: number;
+  model: string;
+  display_name: string;
+  provider_label: string;
+  platform: Exclude<import('@/types').GroupPlatform, 'composite'>;
+  api_mode: 'chat_completions' | 'responses' | 'anthropic_messages';
+  sort_order: number;
+  agent_verified: boolean;
+  context_window: number | null;
+  max_output_tokens: number | null;
+  capabilities: { tools: boolean; vision: boolean; reasoning: boolean };
+}
+
+export interface DesktopSettings {
+  enabled: boolean;
+  models: DesktopModelEntry[];
+  default_model_id: string | null;
+  credential_ttl_seconds: number;
+}
+
 export interface SystemSettings {
+  desktop?: DesktopSettings;
   sms?: SMSSettings;
   // Registration settings
   registration_enabled: boolean;
@@ -776,6 +799,7 @@ export interface SystemSettings {
 }
 
 export interface UpdateSettingsRequest {
+  desktop?: DesktopSettings;
   sms?: SMSEditableSettings;
   registration_enabled?: boolean;
   email_verify_enabled?: boolean;

@@ -373,7 +373,13 @@ func (s *SettingService) GetAllSettings(ctx context.Context) (*SystemSettings, e
 		return nil, fmt.Errorf("get all settings: %w", err)
 	}
 
-	return s.parseSettings(settings), nil
+	desktop, err := desktopSettingsFromValues(settings)
+	if err != nil {
+		return nil, err
+	}
+	parsed := s.parseSettings(settings)
+	parsed.Desktop = &desktop
+	return parsed, nil
 }
 
 // SetOnUpdateCallback sets a callback function to be called when settings are updated
