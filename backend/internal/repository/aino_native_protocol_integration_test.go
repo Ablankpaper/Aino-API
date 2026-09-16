@@ -26,8 +26,10 @@ type ainoNativeProtocol struct {
 	path, content                               string
 	shutdown, releaseTerminal                   chan struct{}
 	shutdownOnce, releaseTerminalOnce           sync.Once
+	terminalReleaseTimeout                      time.Duration
 	toolResults, streamStarted, streamCancelled atomic.Int64
 	downstreamDisconnects, streamDrained        atomic.Int64
+	streamTimeouts                              atomic.Int64
 	streamShutdowns                             atomic.Int64
 }
 
@@ -39,15 +41,26 @@ func (p *ainoNativeProtocol) releaseTerminalStream() {
 	p.releaseTerminalOnce.Do(func() { close(p.releaseTerminal) })
 }
 
-func (p *ainoNativeProtocol) watchNativeDownstreamRequest(req *http.Request) {
+func (p *ainoNativeProtocol) watchNativeDownstreamRequest(req *http.Request) func() {
 	if !isNativeCancellationRequest(req) {
-		return
+		return func() {}
 	}
+	handlerFinished := make(chan struct{})
+	var finishOnce sync.Once
 	go func() {
-		<-req.Context().Done()
-		p.downstreamDisconnects.Add(1)
-		p.releaseTerminalStream()
+		select {
+		case <-req.Context().Done():
+			select {
+			case <-handlerFinished:
+				return
+			default:
+			}
+			p.downstreamDisconnects.Add(1)
+			p.releaseTerminalStream()
+		case <-handlerFinished:
+		}
 	}()
+	return func() { finishOnce.Do(func() { close(handlerFinished) }) }
 }
 
 func isNativeCancellationRequest(req *http.Request) bool {
@@ -68,12 +81,20 @@ func isNativeCancellationRequest(req *http.Request) bool {
 	if json.Unmarshal(body, &payload) != nil {
 		return false
 	}
-	for _, message := range payload.Messages {
-		if message.Role == "user" && strings.Contains(string(message.Content), "fixture-cancel-stream") {
-			return true
+	for index := len(payload.Messages) - 1; index >= 0; index-- {
+		message := payload.Messages[index]
+		if message.Role == "user" {
+			return strings.Contains(string(message.Content), "fixture-cancel-stream")
 		}
 	}
 	return false
+}
+
+func (p *ainoNativeProtocol) terminalReleaseDeadline() time.Duration {
+	if p.terminalReleaseTimeout > 0 {
+		return p.terminalReleaseTimeout
+	}
+	return 25 * time.Second
 }
 
 func registerNativeProtocolCleanup(t *testing.T, protocol *ainoNativeProtocol, closeServer func()) {
@@ -216,7 +237,9 @@ func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		case <-p.shutdown:
 			p.streamShutdowns.Add(1)
 			return
-		case <-time.After(25 * time.Second):
+		case <-time.After(p.terminalReleaseDeadline()):
+			p.streamTimeouts.Add(1)
+			return
 		}
 	}
 	emit(map[string]any{}, finish, usage)
@@ -261,7 +284,8 @@ func TestNativeProtocolReleasesTerminalOnlyAfterSelectedDownstreamDisconnect(t *
 	}
 	entered := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		protocol.watchNativeDownstreamRequest(req)
+		finishWatching := protocol.watchNativeDownstreamRequest(req)
+		defer finishWatching()
 		close(entered)
 		select {
 		case <-protocol.releaseTerminal:
@@ -306,6 +330,81 @@ func TestNativeProtocolReleasesTerminalOnlyAfterSelectedDownstreamDisconnect(t *
 		t.Fatal("fixture did not release terminal stream after downstream disconnect")
 	}
 	require.Error(t, <-requestDone)
+}
+
+func TestNativeProtocolOnlySelectsLatestUserCancellationMarker(t *testing.T) {
+	protocol := &ainoNativeProtocol{shutdown: make(chan struct{}), releaseTerminal: make(chan struct{})}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		finishWatching := protocol.watchNativeDownstreamRequest(req)
+		defer finishWatching()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(`{"messages":[{"role":"user","content":"fixture-cancel-stream"},{"role":"assistant","content":"interrupted"},{"role":"user","content":"normal restored turn"}]}`))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	response.Body.Close()
+
+	require.Never(t, func() bool { return protocol.downstreamDisconnects.Load() != 0 }, 100*time.Millisecond, 10*time.Millisecond)
+	select {
+	case <-protocol.releaseTerminal:
+		t.Fatal("historical cancellation marker released terminal stream")
+	default:
+	}
+}
+
+func TestNativeProtocolNormalCompletionDoesNotCountAsDownstreamDisconnect(t *testing.T) {
+	protocol := &ainoNativeProtocol{shutdown: make(chan struct{}), releaseTerminal: make(chan struct{})}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		finishWatching := protocol.watchNativeDownstreamRequest(req)
+		finishWatching()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(`{"messages":[{"role":"user","content":"fixture-cancel-stream"}]}`))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	response.Body.Close()
+
+	require.Never(t, func() bool { return protocol.downstreamDisconnects.Load() != 0 }, 100*time.Millisecond, 10*time.Millisecond)
+	select {
+	case <-protocol.releaseTerminal:
+		t.Fatal("normal completion released terminal stream")
+	default:
+	}
+}
+
+func TestNativeProtocolDeadlineDoesNotEmitTerminalUsage(t *testing.T) {
+	protocol := &ainoNativeProtocol{
+		rig:                    &ainoPlatformFixture{runID: "native-timeout-test"},
+		path:                   "/tmp/native-timeout-test.txt",
+		content:                "native-timeout-test-content",
+		shutdown:               make(chan struct{}),
+		releaseTerminal:        make(chan struct{}),
+		terminalReleaseTimeout: 10 * time.Millisecond,
+	}
+	server := httptest.NewServer(protocol)
+	defer server.Close()
+	body := `{"model":"fixture-tool-model","stream":true,"messages":[{"role":"user","content":"fixture-cancel-stream"}],"tools":[{"function":{"name":"read_file","parameters":{"properties":{"path":{}}}}}]}`
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(body))
+	require.NoError(t, err)
+	request.Header.Set("Authorization", "Bearer fixture-upstream-key")
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	stream, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(stream), "Fixture stream started")
+	require.NotContains(t, string(stream), "[DONE]")
+	require.EqualValues(t, 1, protocol.streamTimeouts.Load())
+	require.EqualValues(t, 0, protocol.streamDrained.Load())
 }
 
 func TestRegisterNativeProtocolCleanupSignalsShutdownBeforeServerClose(t *testing.T) {
