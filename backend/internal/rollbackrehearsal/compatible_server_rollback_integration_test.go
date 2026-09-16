@@ -81,9 +81,11 @@ type phaseProof struct {
 	OrdinaryKeyModelsStatus     int    `json:"ordinary_key_models_status"`
 	ManagedKeyModelsStatus      int    `json:"managed_key_models_status"`
 	PhoneSendDisabledStatus     int    `json:"phone_send_disabled_status"`
+	PhoneSendDisabledReason     string `json:"phone_send_disabled_reason"`
 	RegistrationDisabledStatus  int    `json:"registration_disabled_status"`
 	PaymentCreateDisabledStatus int    `json:"payment_create_disabled_status"`
 	CredentialIssueHaltedStatus int    `json:"credential_issue_halted_status"`
+	CredentialIssueHaltedReason string `json:"credential_issue_halted_reason,omitempty"`
 }
 
 type processReceipt struct {
@@ -235,9 +237,17 @@ func TestCompatibleOldServerRollbackRehearsal(t *testing.T) {
 	require.Equal(t, before.IdentitySubjects, afterRestore.IdentitySubjects)
 	require.Equal(t, before.OrdinaryKeyStatus, afterOld.OrdinaryKeyStatus)
 	require.Equal(t, before.OrdinaryKeyStatus, afterRestore.OrdinaryKeyStatus)
+	require.Equal(t, "active", before.ManagedKeyStatus)
 	require.False(t, before.ManagedCredentialOff)
+	require.Empty(t, before.ManagedRevokeReason)
+	require.Equal(t, "disabled", afterOld.ManagedKeyStatus)
 	require.True(t, afterOld.ManagedCredentialOff)
+	require.Equal(t, "parent_session_revoked", afterOld.ManagedRevokeReason)
+	require.Equal(t, "disabled", afterRestore.ManagedKeyStatus)
 	require.True(t, afterRestore.ManagedCredentialOff)
+	require.Equal(t, "parent_session_revoked", afterRestore.ManagedRevokeReason)
+	require.Equal(t, afterOld.ManagedCredentialOff, afterRestore.ManagedCredentialOff)
+	require.Equal(t, afterOld.ManagedRevokeReason, afterRestore.ManagedRevokeReason)
 	require.Equal(t, receipt.MigrationChecksums["latest-before-rollback"], receipt.MigrationChecksums["compatible-old"])
 	require.Equal(t, receipt.MigrationChecksums["latest-before-rollback"], receipt.MigrationChecksums["latest-restored"])
 }
@@ -590,15 +600,21 @@ func verifyPhase(t *testing.T, phase, baseURL, token string, ids fixtureIDs, ord
 	} else {
 		require.Contains(t, []int{http.StatusUnauthorized, http.StatusForbidden}, proof.ManagedKeyModelsStatus)
 	}
-	proof.PhoneSendDisabledStatus, _ = request(t, http.MethodPost, baseURL+"/api/v1/auth/phone/send-code", `{"phone":"13900000098"}`, "")
-	require.NotEqual(t, http.StatusOK, proof.PhoneSendDisabledStatus)
+	var phoneBody []byte
+	proof.PhoneSendDisabledStatus, phoneBody = request(t, http.MethodPost, baseURL+"/api/v1/auth/phone/send-code", `{"phone":"13900000098"}`, "")
+	require.Equal(t, http.StatusServiceUnavailable, proof.PhoneSendDisabledStatus, "phone halt response: %s", phoneBody)
+	proof.PhoneSendDisabledReason = decodeEnvelope(t, phoneBody).Reason
+	require.Equal(t, "SMS_DISABLED", proof.PhoneSendDisabledReason)
 	proof.RegistrationDisabledStatus, _ = request(t, http.MethodPost, baseURL+"/api/v1/auth/register", `{"email":"new-user@example.test","password":"not-a-real-password"}`, "")
 	require.Equal(t, http.StatusForbidden, proof.RegistrationDisabledStatus)
 	proof.PaymentCreateDisabledStatus, _ = request(t, http.MethodPost, baseURL+"/api/v1/payment/orders", `{"amount":10,"payment_type":"alipay"}`, token)
 	require.Equal(t, http.StatusForbidden, proof.PaymentCreateDisabledStatus)
 	if issuanceHalted {
-		proof.CredentialIssueHaltedStatus, _ = request(t, http.MethodPost, baseURL+"/api/v1/desktop/credentials", `{"device_id":"33333333-3333-4333-8333-333333333333","connection_grant_id":"44444444-4444-4444-8444-444444444444","model_id":"rollback-model"}`, token)
-		require.NotEqual(t, http.StatusOK, proof.CredentialIssueHaltedStatus)
+		var credentialBody []byte
+		proof.CredentialIssueHaltedStatus, credentialBody = request(t, http.MethodPost, baseURL+"/api/v1/desktop/credentials", `{"device_id":"33333333-3333-4333-8333-333333333333","connection_grant_id":"44444444-4444-4444-8444-444444444444","model_id":"rollback-model"}`, token)
+		require.Equal(t, http.StatusForbidden, proof.CredentialIssueHaltedStatus, "credential halt response: %s", credentialBody)
+		proof.CredentialIssueHaltedReason = decodeEnvelope(t, credentialBody).Reason
+		require.Equal(t, "DESKTOP_MODEL_NOT_ALLOWED", proof.CredentialIssueHaltedReason)
 	}
 	return proof
 }
