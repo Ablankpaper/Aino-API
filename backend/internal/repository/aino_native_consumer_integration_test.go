@@ -53,7 +53,6 @@ func TestAinoNativeConsumer(t *testing.T) {
 	content := "fixture-file-content-" + r.runID
 	require.NoError(t, os.WriteFile(fixturePath, []byte(content+"\n"), 0600))
 	protocol := &ainoNativeProtocol{rig: r, path: fixturePath, content: content, shutdown: make(chan struct{})}
-	t.Cleanup(protocol.closeActiveStream)
 	r.modelProvider = protocol
 	r.wireModel(t, 0)
 	r.wirePayment(t)
@@ -238,7 +237,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 		_, _ = w.Write(body)
 	})
 	r.server = httptest.NewServer(native)
-	t.Cleanup(r.server.Close)
+	registerNativeProtocolCleanup(t, protocol, r.server.Close)
 	manifest := map[string]string{"origin": r.server.URL, "nonce": nonce, "phone": phone, "run_id": r.runID, "fixture_path": fixturePath, "fixture_content": content}
 	blob, err := json.Marshal(manifest)
 	require.NoError(t, err)

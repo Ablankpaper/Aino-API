@@ -32,6 +32,13 @@ func (p *ainoNativeProtocol) closeActiveStream() {
 	p.shutdownOnce.Do(func() { close(p.shutdown) })
 }
 
+func registerNativeProtocolCleanup(t *testing.T, protocol *ainoNativeProtocol, closeServer func()) {
+	t.Helper()
+	// Go runs cleanup handlers in LIFO order, so register the server first.
+	t.Cleanup(closeServer)
+	t.Cleanup(protocol.closeActiveStream)
+}
+
 func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/v1/chat/completions" || req.Header.Get("Authorization") != "Bearer fixture-upstream-key" {
 		http.Error(w, "unexpected fixture upstream request", 400)
@@ -194,4 +201,22 @@ func TestAinoNativeProtocolShutdownDoesNotCountAsCancellation(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 0, protocol.streamCancelled.Load())
 	require.EqualValues(t, 1, protocol.streamShutdowns.Load())
+}
+
+func TestRegisterNativeProtocolCleanupSignalsShutdownBeforeServerClose(t *testing.T) {
+	protocol := &ainoNativeProtocol{shutdown: make(chan struct{})}
+	serverClosedAfterShutdown := false
+
+	t.Run("cleanup", func(t *testing.T) {
+		registerNativeProtocolCleanup(t, protocol, func() {
+			select {
+			case <-protocol.shutdown:
+				serverClosedAfterShutdown = true
+			default:
+				t.Error("server close ran before native stream shutdown")
+			}
+		})
+	})
+
+	require.True(t, serverClosedAfterShutdown)
 }
