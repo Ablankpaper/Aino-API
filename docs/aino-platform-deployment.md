@@ -60,6 +60,7 @@ Go 默认、unit 和 integration 是不同门禁；`make test` 还包含 golangc
 | 配置键 | 要求 |
 | --- | --- |
 | `sms.enabled` | 默认 false；资源核验完成后才开启 |
+| `sms.rollout_phone_allowlist` | 可选、仅部署配置持有；空/省略保持原有全局开启行为，非空时只有列表中的 canonical 中国大陆 E.164 手机号（如 `+8613900000000`）可发码及验码。无效条目使配置校验失败，不能降级成无限制 |
 | `sms.provider` / `sms.region_id` | 当前只支持 aliyun，默认 cn-hangzhou |
 | `sms.access_key_id` / `sms.access_key_secret` | 专用服务端凭据；可由 `SMS_ACCESS_KEY_ID` / `SMS_ACCESS_KEY_SECRET` 注入 |
 | `sms.hmac_secret` | 至少 32 字节随机秘密；多副本一致，可由 `SMS_HMAC_SECRET` 注入；不放 Git |
@@ -76,6 +77,14 @@ Go 默认、unit 和 integration 是不同门禁；`make test` 还包含 golangc
 
 Redis 必须与生产身份一致地配置并可用；故障时应拒绝发码/校验，不退回进程内限流。不要记录完整手机号、验证码、AccessKey、令牌或响应秘密。
 
+### 4.1 手机号分批开放
+
+`sms.rollout_phone_allowlist` 是部署方持有的最小灰度边界，不是管理员短信设置或通用用户权限系统。它不会出现在管理员/公共设置、能力响应或客户端；管理员对短信模板、限额等运行时设置的覆盖也不能移除该边界。列表必须只含 canonical `+86` 手机号，且配置错误会阻止服务接受该配置。全局 `sms.enabled: false` 始终优先，列表不能绕过全局关闭。
+
+分批启用时先保持 `sms.enabled: false` 写入经授权的测试号码列表，完成配置审核后再开启 SMS。使用列表中的号码走实际发码、登录/注册或绑定、验码闭环，同时确认列表外号码在供应商调用和 Redis 限额预留之前被拒绝。号码从列表移除后，其尚未消费的 challenge 也不能继续验证。`registration_enabled`、协议、邀请、验证码用途/主体、TOTP、一次性消费及限额政策继续独立生效。
+
+只有授权测试闭环已经验证、扩大范围获得明确批准并记录回执后，才显式把 `sms.rollout_phone_allowlist` 改为空列表以解除限制；空列表不是“暂停”，而是恢复 `sms.enabled` 对所有合法手机号全局生效的兼容行为。需要立即停止手机号入口时设置 `sms.enabled: false`，不要用清空 allowlist 代替停用。配置变更按现有部署流程加载，并用配置校验和健康之外的实际受限/允许请求复核；本文不授权修改生产。
+
 ## 5. 内置模型
 
 管理员设置中的 `desktop` 对象映射以下 settings 键，不是新环境变量：
@@ -89,7 +98,7 @@ Redis 必须与生产身份一致地配置并可用；故障时应拒绝发码/�
 
 目录项字段：`id`、`group_id`、`model`、`display_name`、`provider_label`、`platform`、`api_mode`、`sort_order`、`agent_verified`、`context_window`、`max_output_tokens`、`capabilities`（tools/vision/reasoning）。协议仅 `chat_completions` / `responses` / `anthropic_messages`。未知上下文/输出限制为 null；能力未实测不要标 true，默认模型必须有已验证 Agent 工具/流式支持。
 
-组的 allowlist、用户授权/订阅和原价格服务仍是权威。可用目录不等于扩大用户分组权限。只给测试账户授予测试分组可以限制模型灰度；当前 phone 全局功能没有独立逐用户开关，不能宣称全站开关已经实现精细手机号灰度，先在预发布验收。
+组的 allowlist、用户授权/订阅和原价格服务仍是权威。可用目录不等于扩大用户分组权限。只给测试账户授予测试分组可以限制模型灰度；phone 灰度只由部署配置中的 canonical 手机号列表限制短信发码和验码，不是模型授权，也不能据此扩大模型分组权限。先在预发布验收。
 
 账户地址为 `https://api.agentera.com.cn/api/v1`，模型地址为 `https://api.agentera.com.cn/v1`。`desktop_api_version=1` 只是适配版本；Agent 必须实际报告 `managed_model_binding:1`，不能只看应用版本。账户 JWT 和推理 Key 不可混用，普通网站 Key 不得被托管撤销误伤。
 
@@ -120,7 +129,7 @@ Redis 必须与生产身份一致地配置并可用；故障时应拒绝发码/�
 
 ## 7. 回退
 
-1. 先停新注册和新托管凭据签发，必要时关闭新充值入口；保留已付订单查询和签名回调/履约，不为停充值切断已付款入账。
+1. 手机号灰度需要收窄时恢复上一份已审核的非空 `sms.rollout_phone_allowlist`；紧急停止手机号入口时设置 `sms.enabled: false`，不能清空列表（清空会解除限制）。只有授权闭环和扩大范围批准完成后才可显式清空列表。另行停新注册和新托管凭据签发，必要时关闭新充值入口；保留已付订单查询和签名回调/履约，不为停充值切断已付款入账。
 2. 通过受控撤销入口撤销相应设备/父会话托管凭据，确认普通网站 Key、BYOK 不受影响。不要把安装 UUID 当授权秘密。
 3. 桌面提示暂不可用或回到已验证的兼容制品；不要删除用户项目、配置或本机历史。
 4. API 只回退到已经验证能识别新增 phone 身份和订单字段的兼容版本。尚未提供实际旧 SHA 时，不可填写“回退已验证”。

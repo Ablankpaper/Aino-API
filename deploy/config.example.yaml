@@ -98,6 +98,10 @@ webauthn:
 # 密钥前，请保持关闭。管理后台不会读取或回显以下密钥。
 sms:
   enabled: false
+  # Optional staged rollout gate. Leave empty for the existing global behavior.
+  # A non-empty list accepts canonical Chinese mainland E.164 numbers only.
+  # rollout_phone_allowlist: ["+8613900000000"]
+  rollout_phone_allowlist: []
   provider: "aliyun"
   access_key_id: ""
   access_key_secret: ""

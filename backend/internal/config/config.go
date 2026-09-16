@@ -1660,6 +1660,7 @@ type TotpConfig struct {
 
 type SMSConfig struct {
 	Enabled               bool              `mapstructure:"enabled"`
+	RolloutPhoneAllowlist []string          `mapstructure:"rollout_phone_allowlist"`
 	Provider              string            `mapstructure:"provider"` // aliyun
 	AccessKeyID           string            `mapstructure:"access_key_id"`
 	AccessKeySecret       string            `mapstructure:"access_key_secret"`
@@ -1684,6 +1685,9 @@ type SMSConfig struct {
 // Secrets are intentionally only checked for presence/strength; they are never
 // included in errors or public settings responses.
 func validateSMSConfig(c SMSConfig, serverMode string) error {
+	if err := validateSMSRolloutPhoneAllowlist(c.RolloutPhoneAllowlist); err != nil {
+		return err
+	}
 	if !c.Enabled {
 		return nil
 	}
@@ -1698,6 +1702,20 @@ func validateSMSConfig(c SMSConfig, serverMode string) error {
 	}
 	if !c.TemplateVerified {
 		return fmt.Errorf("sms.template_verified must confirm the approved template variables and validity period")
+	}
+	return nil
+}
+
+func validateSMSRolloutPhoneAllowlist(phones []string) error {
+	for i, phone := range phones {
+		if len(phone) != 14 || !strings.HasPrefix(phone, "+861") || phone[4] < '3' || phone[4] > '9' {
+			return fmt.Errorf("sms.rollout_phone_allowlist entry %d must be a canonical Chinese mainland mobile number", i+1)
+		}
+		for _, digit := range phone[3:] {
+			if digit < '0' || digit > '9' {
+				return fmt.Errorf("sms.rollout_phone_allowlist entry %d must be a canonical Chinese mainland mobile number", i+1)
+			}
+		}
 	}
 	return nil
 }
@@ -2400,6 +2418,7 @@ func setDefaults() {
 
 	// SMS 默认配置
 	viper.SetDefault("sms.enabled", false)
+	viper.SetDefault("sms.rollout_phone_allowlist", []string{})
 	viper.SetDefault("sms.provider", "aliyun")
 	viper.SetDefault("sms.access_key_id", "")
 	viper.SetDefault("sms.access_key_secret", "")

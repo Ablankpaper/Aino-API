@@ -196,7 +196,7 @@ func (s *SettingService) smsRuntimeConfig(ctx context.Context) (SMSConfig, error
 	return SMSConfig{Enabled: c.Enabled, Provider: c.Provider, RegionID: c.RegionID, SignName: c.SignName, TemplateCode: c.TemplateCode, TemplateParams: c.TemplateParams,
 		HMACSecret: c.HMACSecret, RequestTimeoutSeconds: c.RequestTimeoutSeconds, CodeLength: c.CodeLength, TTLSeconds: c.TTLSeconds,
 		CooldownSeconds: c.CooldownSeconds, MaxAttempts: c.MaxAttempts, PhoneHourLimit: c.PhoneHourLimit, PhoneDayLimit: c.PhoneDayLimit,
-		IPHourLimit: c.IPHourLimit, GlobalDayLimit: c.GlobalDayLimit}, nil
+		IPHourLimit: c.IPHourLimit, GlobalDayLimit: c.GlobalDayLimit, RolloutPhoneAllowlist: append([]string(nil), c.RolloutPhoneAllowlist...)}, nil
 }
 
 func (s *SMSService) configuredForRequest(ctx context.Context) (*SMSService, error) {

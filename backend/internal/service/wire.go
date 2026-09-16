@@ -61,6 +61,7 @@ func ProvideSMSService(cfg *config.Config, cache SMSCache, sender SMSSender, set
 	}
 	svc := NewSMSService(sender, cache, SMSConfig{
 		Enabled:               cfg.SMS.Enabled,
+		RolloutPhoneAllowlist: append([]string(nil), cfg.SMS.RolloutPhoneAllowlist...),
 		Provider:              cfg.SMS.Provider,
 		SignName:              cfg.SMS.SignName,
 		TemplateCode:          cfg.SMS.TemplateCode,

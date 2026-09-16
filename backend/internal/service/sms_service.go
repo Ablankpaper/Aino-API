@@ -18,17 +18,18 @@ import (
 )
 
 var (
-	ErrSMSDisabled        = infraerrors.ServiceUnavailable("SMS_DISABLED", "phone verification is not enabled")
-	ErrSMSNotConfigured   = infraerrors.ServiceUnavailable("SMS_NOT_CONFIGURED", "phone verification is not configured")
-	ErrSMSUnavailable     = infraerrors.ServiceUnavailable("SMS_UNAVAILABLE", "phone verification is temporarily unavailable; please try again")
-	ErrSMSDeliveryFailed  = infraerrors.ServiceUnavailable("SMS_DELIVERY_FAILED", "verification message could not be submitted")
-	ErrSMSDeliveryUnknown = infraerrors.ServiceUnavailable("SMS_DELIVERY_UNKNOWN", "verification message status is unknown; please wait before retrying")
-	ErrSMSRateLimited     = infraerrors.TooManyRequests("SMS_RATE_LIMITED", "too many verification requests; please try again later")
-	ErrPhoneCodeInvalid   = infraerrors.BadRequest("PHONE_CODE_INVALID", "invalid verification code")
-	ErrPhoneCodeExpired   = infraerrors.BadRequest("PHONE_CODE_EXPIRED", "verification code has expired")
-	ErrPhoneCodeExhausted = infraerrors.BadRequest("PHONE_CODE_EXHAUSTED", "too many invalid verification attempts")
-	ErrPhoneCodeUsed      = infraerrors.BadRequest("PHONE_CODE_USED", "verification code has already been used")
-	ErrPhoneAuthProof     = infraerrors.BadRequest("PHONE_AUTH_PROOF_INVALID", "invalid phone verification proof")
+	ErrSMSDisabled            = infraerrors.ServiceUnavailable("SMS_DISABLED", "phone verification is not enabled")
+	ErrSMSNotConfigured       = infraerrors.ServiceUnavailable("SMS_NOT_CONFIGURED", "phone verification is not configured")
+	ErrSMSUnavailable         = infraerrors.ServiceUnavailable("SMS_UNAVAILABLE", "phone verification is temporarily unavailable; please try again")
+	ErrSMSDeliveryFailed      = infraerrors.ServiceUnavailable("SMS_DELIVERY_FAILED", "verification message could not be submitted")
+	ErrSMSDeliveryUnknown     = infraerrors.ServiceUnavailable("SMS_DELIVERY_UNKNOWN", "verification message status is unknown; please wait before retrying")
+	ErrSMSRateLimited         = infraerrors.TooManyRequests("SMS_RATE_LIMITED", "too many verification requests; please try again later")
+	ErrPhoneRolloutRestricted = infraerrors.Forbidden("PHONE_ROLLOUT_RESTRICTED", "phone verification is not available")
+	ErrPhoneCodeInvalid       = infraerrors.BadRequest("PHONE_CODE_INVALID", "invalid verification code")
+	ErrPhoneCodeExpired       = infraerrors.BadRequest("PHONE_CODE_EXPIRED", "verification code has expired")
+	ErrPhoneCodeExhausted     = infraerrors.BadRequest("PHONE_CODE_EXHAUSTED", "too many invalid verification attempts")
+	ErrPhoneCodeUsed          = infraerrors.BadRequest("PHONE_CODE_USED", "verification code has already been used")
+	ErrPhoneAuthProof         = infraerrors.BadRequest("PHONE_AUTH_PROOF_INVALID", "invalid phone verification proof")
 )
 
 var (
@@ -98,6 +99,7 @@ type PhoneCodeProof struct {
 // SMSConfig holds SMS service configuration
 type SMSConfig struct {
 	Enabled               bool
+	RolloutPhoneAllowlist []string
 	Provider              string
 	RegionID              string
 	SignName              string
@@ -218,6 +220,9 @@ func (s *SMSService) RequestCode(ctx context.Context, input PhoneCodeInput) (*Ph
 		return nil, ErrPhoneInvalid
 	}
 	input.Phone = normalizedPhone
+	if err := s.validateRolloutPhone(input.Phone); err != nil {
+		return nil, err
+	}
 
 	// Check rate limits
 	if err := s.cache.CheckAndReserveCooldown(ctx, input.Phone, s.config.CooldownSeconds); err != nil {
@@ -342,6 +347,9 @@ func (s *SMSService) ConsumeCode(ctx context.Context, input PhoneCodeInput, chal
 		return nil, ErrPhoneInvalid
 	}
 	input.Phone = normalizedPhone
+	if err := s.validateRolloutPhone(input.Phone); err != nil {
+		return nil, err
+	}
 	challengeID = strings.TrimSpace(challengeID)
 	code = strings.TrimSpace(code)
 	if challengeID == "" || len(code) != s.config.CodeLength || !allASCIIDigits(code) {
@@ -430,6 +438,26 @@ func (s *SMSService) validateRuntime() error {
 	}
 	if s.config.CodeLength < 4 || s.config.CodeLength > 8 || s.config.TTLSeconds <= 0 || s.config.MaxAttempts <= 0 {
 		return ErrSMSNotConfigured
+	}
+	return nil
+}
+
+func (s *SMSService) validateRolloutPhone(normalizedPhone string) error {
+	if len(s.config.RolloutPhoneAllowlist) == 0 {
+		return nil
+	}
+	allowed := false
+	for _, configuredPhone := range s.config.RolloutPhoneAllowlist {
+		canonicalPhone, err := NormalizeCNPhone(configuredPhone)
+		if err != nil || canonicalPhone != configuredPhone {
+			return ErrSMSNotConfigured
+		}
+		if canonicalPhone == normalizedPhone {
+			allowed = true
+		}
+	}
+	if !allowed {
+		return ErrPhoneRolloutRestricted
 	}
 	return nil
 }
