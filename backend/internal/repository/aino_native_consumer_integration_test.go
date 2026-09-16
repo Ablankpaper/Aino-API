@@ -52,7 +52,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 	fixturePath := filepath.Join(dir, "fixture-read.txt")
 	content := "fixture-file-content-" + r.runID
 	require.NoError(t, os.WriteFile(fixturePath, []byte(content+"\n"), 0600))
-	protocol := &ainoNativeProtocol{rig: r, path: fixturePath, content: content, shutdown: make(chan struct{})}
+	protocol := &ainoNativeProtocol{rig: r, path: fixturePath, content: content, shutdown: make(chan struct{}), releaseTerminal: make(chan struct{})}
 	r.modelProvider = protocol
 	r.wireModel(t, 0)
 	r.wirePayment(t)
@@ -107,7 +107,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 					return
 				}
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": userID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "tool_results": protocol.toolResults.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load(), "stream_shutdowns": protocol.streamShutdowns.Load()})
+			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": userID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "tool_results": protocol.toolResults.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load(), "downstream_disconnects": protocol.downstreamDisconnects.Load(), "stream_drained": protocol.streamDrained.Load(), "stream_shutdowns": protocol.streamShutdowns.Load()})
 		case "/fixture/control/pay":
 			if req.Method != "POST" || userID == 0 {
 				http.Error(w, "invalid control request", 400)
@@ -165,6 +165,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 			control(w, req)
 			return
 		}
+		protocol.watchNativeDownstreamRequest(req)
 		capture := req.URL.Path == "/api/v1/auth/phone/verify" || req.URL.Path == "/api/v1/auth/refresh" || req.URL.Path == "/api/v1/desktop/credentials"
 		if !capture {
 			r.router.ServeHTTP(w, req)

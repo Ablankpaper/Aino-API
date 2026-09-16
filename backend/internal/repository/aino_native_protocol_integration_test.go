@@ -3,6 +3,8 @@
 package repository_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,14 +24,56 @@ import (
 type ainoNativeProtocol struct {
 	rig                                         *ainoPlatformFixture
 	path, content                               string
-	shutdown                                    chan struct{}
-	shutdownOnce                                sync.Once
+	shutdown, releaseTerminal                   chan struct{}
+	shutdownOnce, releaseTerminalOnce           sync.Once
 	toolResults, streamStarted, streamCancelled atomic.Int64
+	downstreamDisconnects, streamDrained        atomic.Int64
 	streamShutdowns                             atomic.Int64
 }
 
 func (p *ainoNativeProtocol) closeActiveStream() {
 	p.shutdownOnce.Do(func() { close(p.shutdown) })
+}
+
+func (p *ainoNativeProtocol) releaseTerminalStream() {
+	p.releaseTerminalOnce.Do(func() { close(p.releaseTerminal) })
+}
+
+func (p *ainoNativeProtocol) watchNativeDownstreamRequest(req *http.Request) {
+	if !isNativeCancellationRequest(req) {
+		return
+	}
+	go func() {
+		<-req.Context().Done()
+		p.downstreamDisconnects.Add(1)
+		p.releaseTerminalStream()
+	}()
+}
+
+func isNativeCancellationRequest(req *http.Request) bool {
+	if req.Method != http.MethodPost || req.URL.Path != "/v1/chat/completions" || req.Body == nil {
+		return false
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return false
+	}
+	req.Body = io.NopCloser(bytes.NewReader(body))
+	var payload struct {
+		Messages []struct {
+			Role    string          `json:"role"`
+			Content json.RawMessage `json:"content"`
+		} `json:"messages"`
+	}
+	if json.Unmarshal(body, &payload) != nil {
+		return false
+	}
+	for _, message := range payload.Messages {
+		if message.Role == "user" && strings.Contains(string(message.Content), "fixture-cancel-stream") {
+			return true
+		}
+	}
+	return false
 }
 
 func registerNativeProtocolCleanup(t *testing.T, protocol *ainoNativeProtocol, closeServer func()) {
@@ -162,6 +206,10 @@ func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	if cancel {
 		p.streamStarted.Add(1)
 		select {
+		case <-p.releaseTerminal:
+			// The downstream request has ended; give the raw relay one more
+			// write to observe it, then provide the finite usage tail to drain.
+			emit(map[string]any{}, nil, nil)
 		case <-req.Context().Done():
 			p.streamCancelled.Add(1)
 			return
@@ -174,6 +222,9 @@ func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	emit(map[string]any{}, finish, usage)
 	_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 	flusher.Flush()
+	if cancel {
+		p.streamDrained.Add(1)
+	}
 }
 
 func TestAinoNativeProtocolShutdownDoesNotCountAsCancellation(t *testing.T) {
@@ -201,6 +252,60 @@ func TestAinoNativeProtocolShutdownDoesNotCountAsCancellation(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 0, protocol.streamCancelled.Load())
 	require.EqualValues(t, 1, protocol.streamShutdowns.Load())
+}
+
+func TestNativeProtocolReleasesTerminalOnlyAfterSelectedDownstreamDisconnect(t *testing.T) {
+	protocol := &ainoNativeProtocol{
+		shutdown:        make(chan struct{}),
+		releaseTerminal: make(chan struct{}),
+	}
+	entered := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		protocol.watchNativeDownstreamRequest(req)
+		close(entered)
+		select {
+		case <-protocol.releaseTerminal:
+			w.WriteHeader(http.StatusNoContent)
+		case <-protocol.shutdown:
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(`{"messages":[{"role":"user","content":"fixture-cancel-stream"}]}`))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "application/json")
+	requestDone := make(chan error, 1)
+	go func() {
+		response, err := http.DefaultClient.Do(request)
+		if response != nil {
+			response.Body.Close()
+		}
+		requestDone <- err
+	}()
+
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("native fixture never received the selected downstream request")
+	}
+	require.EqualValues(t, 0, protocol.downstreamDisconnects.Load())
+	select {
+	case <-protocol.releaseTerminal:
+		t.Fatal("fixture released terminal stream before downstream disconnect")
+	default:
+	}
+
+	cancel()
+	require.Eventually(t, func() bool { return protocol.downstreamDisconnects.Load() == 1 }, time.Second, 10*time.Millisecond)
+	select {
+	case <-protocol.releaseTerminal:
+	case <-time.After(time.Second):
+		t.Fatal("fixture did not release terminal stream after downstream disconnect")
+	}
+	require.Error(t, <-requestDone)
 }
 
 func TestRegisterNativeProtocolCleanupSignalsShutdownBeforeServerClose(t *testing.T) {
