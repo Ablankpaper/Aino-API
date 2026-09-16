@@ -43,6 +43,102 @@ func (_u *PaymentOrderUpdate) SetNillableUserID(v *int64) *PaymentOrderUpdate {
 	return _u
 }
 
+// SetClientOrderID sets the "client_order_id" field.
+func (_u *PaymentOrderUpdate) SetClientOrderID(v string) *PaymentOrderUpdate {
+	_u.mutation.SetClientOrderID(v)
+	return _u
+}
+
+// SetNillableClientOrderID sets the "client_order_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableClientOrderID(v *string) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetClientOrderID(*v)
+	}
+	return _u
+}
+
+// ClearClientOrderID clears the value of the "client_order_id" field.
+func (_u *PaymentOrderUpdate) ClearClientOrderID() *PaymentOrderUpdate {
+	_u.mutation.ClearClientOrderID()
+	return _u
+}
+
+// SetRequestHash sets the "request_hash" field.
+func (_u *PaymentOrderUpdate) SetRequestHash(v string) *PaymentOrderUpdate {
+	_u.mutation.SetRequestHash(v)
+	return _u
+}
+
+// SetNillableRequestHash sets the "request_hash" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableRequestHash(v *string) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetRequestHash(*v)
+	}
+	return _u
+}
+
+// SetCreationState sets the "creation_state" field.
+func (_u *PaymentOrderUpdate) SetCreationState(v string) *PaymentOrderUpdate {
+	_u.mutation.SetCreationState(v)
+	return _u
+}
+
+// SetNillableCreationState sets the "creation_state" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableCreationState(v *string) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetCreationState(*v)
+	}
+	return _u
+}
+
+// SetCreationLeaseToken sets the "creation_lease_token" field.
+func (_u *PaymentOrderUpdate) SetCreationLeaseToken(v string) *PaymentOrderUpdate {
+	_u.mutation.SetCreationLeaseToken(v)
+	return _u
+}
+
+// SetNillableCreationLeaseToken sets the "creation_lease_token" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableCreationLeaseToken(v *string) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetCreationLeaseToken(*v)
+	}
+	return _u
+}
+
+// SetCreationLeaseUntil sets the "creation_lease_until" field.
+func (_u *PaymentOrderUpdate) SetCreationLeaseUntil(v time.Time) *PaymentOrderUpdate {
+	_u.mutation.SetCreationLeaseUntil(v)
+	return _u
+}
+
+// SetNillableCreationLeaseUntil sets the "creation_lease_until" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableCreationLeaseUntil(v *time.Time) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetCreationLeaseUntil(*v)
+	}
+	return _u
+}
+
+// ClearCreationLeaseUntil clears the value of the "creation_lease_until" field.
+func (_u *PaymentOrderUpdate) ClearCreationLeaseUntil() *PaymentOrderUpdate {
+	_u.mutation.ClearCreationLeaseUntil()
+	return _u
+}
+
+// SetConfirmationRequired sets the "confirmation_required" field.
+func (_u *PaymentOrderUpdate) SetConfirmationRequired(v bool) *PaymentOrderUpdate {
+	_u.mutation.SetConfirmationRequired(v)
+	return _u
+}
+
+// SetNillableConfirmationRequired sets the "confirmation_required" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableConfirmationRequired(v *bool) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetConfirmationRequired(*v)
+	}
+	return _u
+}
+
 // SetUserEmail sets the "user_email" field.
 func (_u *PaymentOrderUpdate) SetUserEmail(v string) *PaymentOrderUpdate {
 	_u.mutation.SetUserEmail(v)
@@ -768,6 +864,26 @@ func (_u *PaymentOrderUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PaymentOrderUpdate) check() error {
+	if v, ok := _u.mutation.ClientOrderID(); ok {
+		if err := paymentorder.ClientOrderIDValidator(v); err != nil {
+			return &ValidationError{Name: "client_order_id", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.client_order_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RequestHash(); ok {
+		if err := paymentorder.RequestHashValidator(v); err != nil {
+			return &ValidationError{Name: "request_hash", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.request_hash": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CreationState(); ok {
+		if err := paymentorder.CreationStateValidator(v); err != nil {
+			return &ValidationError{Name: "creation_state", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.creation_state": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CreationLeaseToken(); ok {
+		if err := paymentorder.CreationLeaseTokenValidator(v); err != nil {
+			return &ValidationError{Name: "creation_lease_token", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.creation_lease_token": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserEmail(); ok {
 		if err := paymentorder.UserEmailValidator(v); err != nil {
 			return &ValidationError{Name: "user_email", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.user_email": %w`, err)}
@@ -850,6 +966,30 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.ClientOrderID(); ok {
+		_spec.SetField(paymentorder.FieldClientOrderID, field.TypeString, value)
+	}
+	if _u.mutation.ClientOrderIDCleared() {
+		_spec.ClearField(paymentorder.FieldClientOrderID, field.TypeString)
+	}
+	if value, ok := _u.mutation.RequestHash(); ok {
+		_spec.SetField(paymentorder.FieldRequestHash, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreationState(); ok {
+		_spec.SetField(paymentorder.FieldCreationState, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreationLeaseToken(); ok {
+		_spec.SetField(paymentorder.FieldCreationLeaseToken, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreationLeaseUntil(); ok {
+		_spec.SetField(paymentorder.FieldCreationLeaseUntil, field.TypeTime, value)
+	}
+	if _u.mutation.CreationLeaseUntilCleared() {
+		_spec.ClearField(paymentorder.FieldCreationLeaseUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ConfirmationRequired(); ok {
+		_spec.SetField(paymentorder.FieldConfirmationRequired, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UserEmail(); ok {
 		_spec.SetField(paymentorder.FieldUserEmail, field.TypeString, value)
@@ -1102,6 +1242,102 @@ func (_u *PaymentOrderUpdateOne) SetUserID(v int64) *PaymentOrderUpdateOne {
 func (_u *PaymentOrderUpdateOne) SetNillableUserID(v *int64) *PaymentOrderUpdateOne {
 	if v != nil {
 		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// SetClientOrderID sets the "client_order_id" field.
+func (_u *PaymentOrderUpdateOne) SetClientOrderID(v string) *PaymentOrderUpdateOne {
+	_u.mutation.SetClientOrderID(v)
+	return _u
+}
+
+// SetNillableClientOrderID sets the "client_order_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableClientOrderID(v *string) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetClientOrderID(*v)
+	}
+	return _u
+}
+
+// ClearClientOrderID clears the value of the "client_order_id" field.
+func (_u *PaymentOrderUpdateOne) ClearClientOrderID() *PaymentOrderUpdateOne {
+	_u.mutation.ClearClientOrderID()
+	return _u
+}
+
+// SetRequestHash sets the "request_hash" field.
+func (_u *PaymentOrderUpdateOne) SetRequestHash(v string) *PaymentOrderUpdateOne {
+	_u.mutation.SetRequestHash(v)
+	return _u
+}
+
+// SetNillableRequestHash sets the "request_hash" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableRequestHash(v *string) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetRequestHash(*v)
+	}
+	return _u
+}
+
+// SetCreationState sets the "creation_state" field.
+func (_u *PaymentOrderUpdateOne) SetCreationState(v string) *PaymentOrderUpdateOne {
+	_u.mutation.SetCreationState(v)
+	return _u
+}
+
+// SetNillableCreationState sets the "creation_state" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableCreationState(v *string) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetCreationState(*v)
+	}
+	return _u
+}
+
+// SetCreationLeaseToken sets the "creation_lease_token" field.
+func (_u *PaymentOrderUpdateOne) SetCreationLeaseToken(v string) *PaymentOrderUpdateOne {
+	_u.mutation.SetCreationLeaseToken(v)
+	return _u
+}
+
+// SetNillableCreationLeaseToken sets the "creation_lease_token" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableCreationLeaseToken(v *string) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetCreationLeaseToken(*v)
+	}
+	return _u
+}
+
+// SetCreationLeaseUntil sets the "creation_lease_until" field.
+func (_u *PaymentOrderUpdateOne) SetCreationLeaseUntil(v time.Time) *PaymentOrderUpdateOne {
+	_u.mutation.SetCreationLeaseUntil(v)
+	return _u
+}
+
+// SetNillableCreationLeaseUntil sets the "creation_lease_until" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableCreationLeaseUntil(v *time.Time) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetCreationLeaseUntil(*v)
+	}
+	return _u
+}
+
+// ClearCreationLeaseUntil clears the value of the "creation_lease_until" field.
+func (_u *PaymentOrderUpdateOne) ClearCreationLeaseUntil() *PaymentOrderUpdateOne {
+	_u.mutation.ClearCreationLeaseUntil()
+	return _u
+}
+
+// SetConfirmationRequired sets the "confirmation_required" field.
+func (_u *PaymentOrderUpdateOne) SetConfirmationRequired(v bool) *PaymentOrderUpdateOne {
+	_u.mutation.SetConfirmationRequired(v)
+	return _u
+}
+
+// SetNillableConfirmationRequired sets the "confirmation_required" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableConfirmationRequired(v *bool) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetConfirmationRequired(*v)
 	}
 	return _u
 }
@@ -1844,6 +2080,26 @@ func (_u *PaymentOrderUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PaymentOrderUpdateOne) check() error {
+	if v, ok := _u.mutation.ClientOrderID(); ok {
+		if err := paymentorder.ClientOrderIDValidator(v); err != nil {
+			return &ValidationError{Name: "client_order_id", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.client_order_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RequestHash(); ok {
+		if err := paymentorder.RequestHashValidator(v); err != nil {
+			return &ValidationError{Name: "request_hash", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.request_hash": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CreationState(); ok {
+		if err := paymentorder.CreationStateValidator(v); err != nil {
+			return &ValidationError{Name: "creation_state", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.creation_state": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CreationLeaseToken(); ok {
+		if err := paymentorder.CreationLeaseTokenValidator(v); err != nil {
+			return &ValidationError{Name: "creation_lease_token", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.creation_lease_token": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserEmail(); ok {
 		if err := paymentorder.UserEmailValidator(v); err != nil {
 			return &ValidationError{Name: "user_email", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.user_email": %w`, err)}
@@ -1943,6 +2199,30 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.ClientOrderID(); ok {
+		_spec.SetField(paymentorder.FieldClientOrderID, field.TypeString, value)
+	}
+	if _u.mutation.ClientOrderIDCleared() {
+		_spec.ClearField(paymentorder.FieldClientOrderID, field.TypeString)
+	}
+	if value, ok := _u.mutation.RequestHash(); ok {
+		_spec.SetField(paymentorder.FieldRequestHash, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreationState(); ok {
+		_spec.SetField(paymentorder.FieldCreationState, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreationLeaseToken(); ok {
+		_spec.SetField(paymentorder.FieldCreationLeaseToken, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreationLeaseUntil(); ok {
+		_spec.SetField(paymentorder.FieldCreationLeaseUntil, field.TypeTime, value)
+	}
+	if _u.mutation.CreationLeaseUntilCleared() {
+		_spec.ClearField(paymentorder.FieldCreationLeaseUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ConfirmationRequired(); ok {
+		_spec.SetField(paymentorder.FieldConfirmationRequired, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UserEmail(); ok {
 		_spec.SetField(paymentorder.FieldUserEmail, field.TypeString, value)

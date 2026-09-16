@@ -29,6 +29,90 @@ func (_c *PaymentOrderCreate) SetUserID(v int64) *PaymentOrderCreate {
 	return _c
 }
 
+// SetClientOrderID sets the "client_order_id" field.
+func (_c *PaymentOrderCreate) SetClientOrderID(v string) *PaymentOrderCreate {
+	_c.mutation.SetClientOrderID(v)
+	return _c
+}
+
+// SetNillableClientOrderID sets the "client_order_id" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableClientOrderID(v *string) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetClientOrderID(*v)
+	}
+	return _c
+}
+
+// SetRequestHash sets the "request_hash" field.
+func (_c *PaymentOrderCreate) SetRequestHash(v string) *PaymentOrderCreate {
+	_c.mutation.SetRequestHash(v)
+	return _c
+}
+
+// SetNillableRequestHash sets the "request_hash" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableRequestHash(v *string) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetRequestHash(*v)
+	}
+	return _c
+}
+
+// SetCreationState sets the "creation_state" field.
+func (_c *PaymentOrderCreate) SetCreationState(v string) *PaymentOrderCreate {
+	_c.mutation.SetCreationState(v)
+	return _c
+}
+
+// SetNillableCreationState sets the "creation_state" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableCreationState(v *string) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetCreationState(*v)
+	}
+	return _c
+}
+
+// SetCreationLeaseToken sets the "creation_lease_token" field.
+func (_c *PaymentOrderCreate) SetCreationLeaseToken(v string) *PaymentOrderCreate {
+	_c.mutation.SetCreationLeaseToken(v)
+	return _c
+}
+
+// SetNillableCreationLeaseToken sets the "creation_lease_token" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableCreationLeaseToken(v *string) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetCreationLeaseToken(*v)
+	}
+	return _c
+}
+
+// SetCreationLeaseUntil sets the "creation_lease_until" field.
+func (_c *PaymentOrderCreate) SetCreationLeaseUntil(v time.Time) *PaymentOrderCreate {
+	_c.mutation.SetCreationLeaseUntil(v)
+	return _c
+}
+
+// SetNillableCreationLeaseUntil sets the "creation_lease_until" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableCreationLeaseUntil(v *time.Time) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetCreationLeaseUntil(*v)
+	}
+	return _c
+}
+
+// SetConfirmationRequired sets the "confirmation_required" field.
+func (_c *PaymentOrderCreate) SetConfirmationRequired(v bool) *PaymentOrderCreate {
+	_c.mutation.SetConfirmationRequired(v)
+	return _c
+}
+
+// SetNillableConfirmationRequired sets the "confirmation_required" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableConfirmationRequired(v *bool) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetConfirmationRequired(*v)
+	}
+	return _c
+}
+
 // SetUserEmail sets the "user_email" field.
 func (_c *PaymentOrderCreate) SetUserEmail(v string) *PaymentOrderCreate {
 	_c.mutation.SetUserEmail(v)
@@ -513,6 +597,22 @@ func (_c *PaymentOrderCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *PaymentOrderCreate) defaults() {
+	if _, ok := _c.mutation.RequestHash(); !ok {
+		v := paymentorder.DefaultRequestHash
+		_c.mutation.SetRequestHash(v)
+	}
+	if _, ok := _c.mutation.CreationState(); !ok {
+		v := paymentorder.DefaultCreationState
+		_c.mutation.SetCreationState(v)
+	}
+	if _, ok := _c.mutation.CreationLeaseToken(); !ok {
+		v := paymentorder.DefaultCreationLeaseToken
+		_c.mutation.SetCreationLeaseToken(v)
+	}
+	if _, ok := _c.mutation.ConfirmationRequired(); !ok {
+		v := paymentorder.DefaultConfirmationRequired
+		_c.mutation.SetConfirmationRequired(v)
+	}
 	if _, ok := _c.mutation.FeeRate(); !ok {
 		v := paymentorder.DefaultFeeRate
 		_c.mutation.SetFeeRate(v)
@@ -551,6 +651,38 @@ func (_c *PaymentOrderCreate) defaults() {
 func (_c *PaymentOrderCreate) check() error {
 	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "PaymentOrder.user_id"`)}
+	}
+	if v, ok := _c.mutation.ClientOrderID(); ok {
+		if err := paymentorder.ClientOrderIDValidator(v); err != nil {
+			return &ValidationError{Name: "client_order_id", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.client_order_id": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.RequestHash(); !ok {
+		return &ValidationError{Name: "request_hash", err: errors.New(`ent: missing required field "PaymentOrder.request_hash"`)}
+	}
+	if v, ok := _c.mutation.RequestHash(); ok {
+		if err := paymentorder.RequestHashValidator(v); err != nil {
+			return &ValidationError{Name: "request_hash", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.request_hash": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CreationState(); !ok {
+		return &ValidationError{Name: "creation_state", err: errors.New(`ent: missing required field "PaymentOrder.creation_state"`)}
+	}
+	if v, ok := _c.mutation.CreationState(); ok {
+		if err := paymentorder.CreationStateValidator(v); err != nil {
+			return &ValidationError{Name: "creation_state", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.creation_state": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CreationLeaseToken(); !ok {
+		return &ValidationError{Name: "creation_lease_token", err: errors.New(`ent: missing required field "PaymentOrder.creation_lease_token"`)}
+	}
+	if v, ok := _c.mutation.CreationLeaseToken(); ok {
+		if err := paymentorder.CreationLeaseTokenValidator(v); err != nil {
+			return &ValidationError{Name: "creation_lease_token", err: fmt.Errorf(`ent: validator failed for field "PaymentOrder.creation_lease_token": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.ConfirmationRequired(); !ok {
+		return &ValidationError{Name: "confirmation_required", err: errors.New(`ent: missing required field "PaymentOrder.confirmation_required"`)}
 	}
 	if _, ok := _c.mutation.UserEmail(); !ok {
 		return &ValidationError{Name: "user_email", err: errors.New(`ent: missing required field "PaymentOrder.user_email"`)}
@@ -701,6 +833,30 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 		_spec = sqlgraph.NewCreateSpec(paymentorder.Table, sqlgraph.NewFieldSpec(paymentorder.FieldID, field.TypeInt64))
 	)
 	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.ClientOrderID(); ok {
+		_spec.SetField(paymentorder.FieldClientOrderID, field.TypeString, value)
+		_node.ClientOrderID = &value
+	}
+	if value, ok := _c.mutation.RequestHash(); ok {
+		_spec.SetField(paymentorder.FieldRequestHash, field.TypeString, value)
+		_node.RequestHash = value
+	}
+	if value, ok := _c.mutation.CreationState(); ok {
+		_spec.SetField(paymentorder.FieldCreationState, field.TypeString, value)
+		_node.CreationState = value
+	}
+	if value, ok := _c.mutation.CreationLeaseToken(); ok {
+		_spec.SetField(paymentorder.FieldCreationLeaseToken, field.TypeString, value)
+		_node.CreationLeaseToken = value
+	}
+	if value, ok := _c.mutation.CreationLeaseUntil(); ok {
+		_spec.SetField(paymentorder.FieldCreationLeaseUntil, field.TypeTime, value)
+		_node.CreationLeaseUntil = &value
+	}
+	if value, ok := _c.mutation.ConfirmationRequired(); ok {
+		_spec.SetField(paymentorder.FieldConfirmationRequired, field.TypeBool, value)
+		_node.ConfirmationRequired = value
+	}
 	if value, ok := _c.mutation.UserEmail(); ok {
 		_spec.SetField(paymentorder.FieldUserEmail, field.TypeString, value)
 		_node.UserEmail = value
@@ -931,6 +1087,90 @@ func (u *PaymentOrderUpsert) SetUserID(v int64) *PaymentOrderUpsert {
 // UpdateUserID sets the "user_id" field to the value that was provided on create.
 func (u *PaymentOrderUpsert) UpdateUserID() *PaymentOrderUpsert {
 	u.SetExcluded(paymentorder.FieldUserID)
+	return u
+}
+
+// SetClientOrderID sets the "client_order_id" field.
+func (u *PaymentOrderUpsert) SetClientOrderID(v string) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldClientOrderID, v)
+	return u
+}
+
+// UpdateClientOrderID sets the "client_order_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateClientOrderID() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldClientOrderID)
+	return u
+}
+
+// ClearClientOrderID clears the value of the "client_order_id" field.
+func (u *PaymentOrderUpsert) ClearClientOrderID() *PaymentOrderUpsert {
+	u.SetNull(paymentorder.FieldClientOrderID)
+	return u
+}
+
+// SetRequestHash sets the "request_hash" field.
+func (u *PaymentOrderUpsert) SetRequestHash(v string) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldRequestHash, v)
+	return u
+}
+
+// UpdateRequestHash sets the "request_hash" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateRequestHash() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldRequestHash)
+	return u
+}
+
+// SetCreationState sets the "creation_state" field.
+func (u *PaymentOrderUpsert) SetCreationState(v string) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldCreationState, v)
+	return u
+}
+
+// UpdateCreationState sets the "creation_state" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateCreationState() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldCreationState)
+	return u
+}
+
+// SetCreationLeaseToken sets the "creation_lease_token" field.
+func (u *PaymentOrderUpsert) SetCreationLeaseToken(v string) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldCreationLeaseToken, v)
+	return u
+}
+
+// UpdateCreationLeaseToken sets the "creation_lease_token" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateCreationLeaseToken() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldCreationLeaseToken)
+	return u
+}
+
+// SetCreationLeaseUntil sets the "creation_lease_until" field.
+func (u *PaymentOrderUpsert) SetCreationLeaseUntil(v time.Time) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldCreationLeaseUntil, v)
+	return u
+}
+
+// UpdateCreationLeaseUntil sets the "creation_lease_until" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateCreationLeaseUntil() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldCreationLeaseUntil)
+	return u
+}
+
+// ClearCreationLeaseUntil clears the value of the "creation_lease_until" field.
+func (u *PaymentOrderUpsert) ClearCreationLeaseUntil() *PaymentOrderUpsert {
+	u.SetNull(paymentorder.FieldCreationLeaseUntil)
+	return u
+}
+
+// SetConfirmationRequired sets the "confirmation_required" field.
+func (u *PaymentOrderUpsert) SetConfirmationRequired(v bool) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldConfirmationRequired, v)
+	return u
+}
+
+// UpdateConfirmationRequired sets the "confirmation_required" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateConfirmationRequired() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldConfirmationRequired)
 	return u
 }
 
@@ -1596,6 +1836,104 @@ func (u *PaymentOrderUpsertOne) SetUserID(v int64) *PaymentOrderUpsertOne {
 func (u *PaymentOrderUpsertOne) UpdateUserID() *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdateUserID()
+	})
+}
+
+// SetClientOrderID sets the "client_order_id" field.
+func (u *PaymentOrderUpsertOne) SetClientOrderID(v string) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetClientOrderID(v)
+	})
+}
+
+// UpdateClientOrderID sets the "client_order_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateClientOrderID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateClientOrderID()
+	})
+}
+
+// ClearClientOrderID clears the value of the "client_order_id" field.
+func (u *PaymentOrderUpsertOne) ClearClientOrderID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearClientOrderID()
+	})
+}
+
+// SetRequestHash sets the "request_hash" field.
+func (u *PaymentOrderUpsertOne) SetRequestHash(v string) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRequestHash(v)
+	})
+}
+
+// UpdateRequestHash sets the "request_hash" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateRequestHash() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRequestHash()
+	})
+}
+
+// SetCreationState sets the "creation_state" field.
+func (u *PaymentOrderUpsertOne) SetCreationState(v string) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCreationState(v)
+	})
+}
+
+// UpdateCreationState sets the "creation_state" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateCreationState() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCreationState()
+	})
+}
+
+// SetCreationLeaseToken sets the "creation_lease_token" field.
+func (u *PaymentOrderUpsertOne) SetCreationLeaseToken(v string) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCreationLeaseToken(v)
+	})
+}
+
+// UpdateCreationLeaseToken sets the "creation_lease_token" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateCreationLeaseToken() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCreationLeaseToken()
+	})
+}
+
+// SetCreationLeaseUntil sets the "creation_lease_until" field.
+func (u *PaymentOrderUpsertOne) SetCreationLeaseUntil(v time.Time) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCreationLeaseUntil(v)
+	})
+}
+
+// UpdateCreationLeaseUntil sets the "creation_lease_until" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateCreationLeaseUntil() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCreationLeaseUntil()
+	})
+}
+
+// ClearCreationLeaseUntil clears the value of the "creation_lease_until" field.
+func (u *PaymentOrderUpsertOne) ClearCreationLeaseUntil() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearCreationLeaseUntil()
+	})
+}
+
+// SetConfirmationRequired sets the "confirmation_required" field.
+func (u *PaymentOrderUpsertOne) SetConfirmationRequired(v bool) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetConfirmationRequired(v)
+	})
+}
+
+// UpdateConfirmationRequired sets the "confirmation_required" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateConfirmationRequired() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateConfirmationRequired()
 	})
 }
 
@@ -2528,6 +2866,104 @@ func (u *PaymentOrderUpsertBulk) SetUserID(v int64) *PaymentOrderUpsertBulk {
 func (u *PaymentOrderUpsertBulk) UpdateUserID() *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.UpdateUserID()
+	})
+}
+
+// SetClientOrderID sets the "client_order_id" field.
+func (u *PaymentOrderUpsertBulk) SetClientOrderID(v string) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetClientOrderID(v)
+	})
+}
+
+// UpdateClientOrderID sets the "client_order_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateClientOrderID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateClientOrderID()
+	})
+}
+
+// ClearClientOrderID clears the value of the "client_order_id" field.
+func (u *PaymentOrderUpsertBulk) ClearClientOrderID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearClientOrderID()
+	})
+}
+
+// SetRequestHash sets the "request_hash" field.
+func (u *PaymentOrderUpsertBulk) SetRequestHash(v string) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetRequestHash(v)
+	})
+}
+
+// UpdateRequestHash sets the "request_hash" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateRequestHash() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateRequestHash()
+	})
+}
+
+// SetCreationState sets the "creation_state" field.
+func (u *PaymentOrderUpsertBulk) SetCreationState(v string) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCreationState(v)
+	})
+}
+
+// UpdateCreationState sets the "creation_state" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateCreationState() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCreationState()
+	})
+}
+
+// SetCreationLeaseToken sets the "creation_lease_token" field.
+func (u *PaymentOrderUpsertBulk) SetCreationLeaseToken(v string) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCreationLeaseToken(v)
+	})
+}
+
+// UpdateCreationLeaseToken sets the "creation_lease_token" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateCreationLeaseToken() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCreationLeaseToken()
+	})
+}
+
+// SetCreationLeaseUntil sets the "creation_lease_until" field.
+func (u *PaymentOrderUpsertBulk) SetCreationLeaseUntil(v time.Time) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCreationLeaseUntil(v)
+	})
+}
+
+// UpdateCreationLeaseUntil sets the "creation_lease_until" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateCreationLeaseUntil() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCreationLeaseUntil()
+	})
+}
+
+// ClearCreationLeaseUntil clears the value of the "creation_lease_until" field.
+func (u *PaymentOrderUpsertBulk) ClearCreationLeaseUntil() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearCreationLeaseUntil()
+	})
+}
+
+// SetConfirmationRequired sets the "confirmation_required" field.
+func (u *PaymentOrderUpsertBulk) SetConfirmationRequired(v bool) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetConfirmationRequired(v)
+	})
+}
+
+// UpdateConfirmationRequired sets the "confirmation_required" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateConfirmationRequired() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateConfirmationRequired()
 	})
 }
 

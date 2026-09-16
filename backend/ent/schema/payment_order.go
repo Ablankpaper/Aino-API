@@ -33,6 +33,12 @@ func (PaymentOrder) Fields() []ent.Field {
 	return []ent.Field{
 		// 用户信息（冗余存储，避免关联查询）
 		field.Int64("user_id"),
+		field.String("client_order_id").Optional().Nillable().MaxLen(36),
+		field.String("request_hash").Default("").MaxLen(64),
+		field.String("creation_state").Default("").MaxLen(20),
+		field.String("creation_lease_token").Default("").MaxLen(36),
+		field.Time("creation_lease_until").Optional().Nillable(),
+		field.Bool("confirmation_required").Default(false),
 		field.String("user_email").
 			MaxLen(255),
 		field.String("user_name").
@@ -185,6 +191,7 @@ func (PaymentOrder) Edges() []ent.Edge {
 
 func (PaymentOrder) Indexes() []ent.Index {
 	return []ent.Index{
+		index.Fields("user_id", "client_order_id").Unique().Annotations(entsql.IndexWhere("client_order_id IS NOT NULL AND client_order_id <> ''")),
 		index.Fields("out_trade_no").
 			Unique().
 			Annotations(entsql.IndexWhere("out_trade_no <> ''")),

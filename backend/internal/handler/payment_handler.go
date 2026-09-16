@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 // PaymentHandler handles user-facing payment requests.
@@ -228,18 +230,42 @@ func (h *PaymentHandler) GetLimits(c *gin.Context) {
 
 // CreateOrderRequest is the request body for creating a payment order.
 type CreateOrderRequest struct {
-	Amount            float64 `json:"amount"`
-	PaymentType       string  `json:"payment_type" binding:"required"`
-	OpenID            string  `json:"openid"`
-	WechatResumeToken string  `json:"wechat_resume_token"`
-	ReturnURL         string  `json:"return_url"`
-	PaymentSource     string  `json:"payment_source"`
-	OrderType         string  `json:"order_type"`
-	PlanID            int64   `json:"plan_id"`
+	amountPresent     bool
+	amountText        string
+	Amount            float64               `json:"amount"`
+	AmountDecimal     *string               `json:"amount_decimal"`
+	ClientOrderID     string                `json:"client_order_id"`
+	ExpectedQuote     *service.PaymentQuote `json:"expected_quote"`
+	PaymentType       string                `json:"payment_type" binding:"required"`
+	OpenID            string                `json:"openid"`
+	WechatResumeToken string                `json:"wechat_resume_token"`
+	ReturnURL         string                `json:"return_url"`
+	PaymentSource     string                `json:"payment_source"`
+	OrderType         string                `json:"order_type"`
+	PlanID            int64                 `json:"plan_id"`
 	// IsMobile lets the frontend declare its mobile status directly. When
 	// nil we fall back to User-Agent heuristics (which miss iPadOS / some
 	// embedded browsers that strip the "Mobile" keyword).
 	IsMobile *bool `json:"is_mobile,omitempty"`
+}
+
+func (r *CreateOrderRequest) UnmarshalJSON(data []byte) error {
+	type plain CreateOrderRequest
+	var parsed plain
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	*r = CreateOrderRequest(parsed)
+	_, r.amountPresent = fields["amount"]
+	r.amountText = string(fields["amount"])
+	if r.amountPresent && string(fields["amount"]) == "null" {
+		return fmt.Errorf("amount must be numeric")
+	}
+	return nil
 }
 
 // CreateOrder creates a new payment order.
@@ -253,6 +279,26 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 	var req CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if req.AmountDecimal != nil {
+		amount, err := service.ParsePaymentAmountDecimal(*req.AmountDecimal)
+		if err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+		if req.amountPresent {
+			numeric, numericErr := decimal.NewFromString(req.amountText)
+			exact, _ := decimal.NewFromString(*req.AmountDecimal)
+			if numericErr != nil || !numeric.Equal(exact) {
+				response.BadRequest(c, "amount and amount_decimal disagree")
+				return
+			}
+		}
+		req.Amount = amount
+	}
+	if service.NormalizePaymentSource(req.PaymentSource) == service.PaymentSourceAinoDesktop && (req.ClientOrderID == "" || req.AmountDecimal == nil) {
+		response.BadRequest(c, "desktop checkout requires client_order_id and amount_decimal")
 		return
 	}
 	if strings.TrimSpace(req.WechatResumeToken) != "" {
@@ -274,6 +320,8 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 	result, err := h.paymentService.CreateOrder(c.Request.Context(), service.CreateOrderRequest{
 		UserID:          subject.UserID,
 		Amount:          req.Amount,
+		ClientOrderID:   req.ClientOrderID,
+		ExpectedQuote:   req.ExpectedQuote,
 		PaymentType:     req.PaymentType,
 		OpenID:          req.OpenID,
 		ClientIP:        c.ClientIP(),
@@ -291,6 +339,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
+	c.Header("Cache-Control", "no-store")
 	response.Success(c, result)
 }
 
@@ -352,6 +401,7 @@ func (h *PaymentHandler) GetMyOrders(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
+	c.Header("Cache-Control", "no-store")
 	response.Paginated(c, sanitizePaymentOrdersForResponse(orders), int64(total), page, pageSize)
 }
 
@@ -374,6 +424,7 @@ func (h *PaymentHandler) GetOrder(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
+	c.Header("Cache-Control", "no-store")
 	response.Success(c, sanitizePaymentOrderForResponse(order))
 }
 
@@ -470,6 +521,7 @@ func (h *PaymentHandler) VerifyOrder(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
+	c.Header("Cache-Control", "no-store")
 	response.Success(c, sanitizePaymentOrderForResponse(order))
 }
 
@@ -620,27 +672,31 @@ func isMobile(c *gin.Context) bool {
 }
 
 type PaymentOrderResult struct {
-	ID                  int64      `json:"id"`
-	UserID              int64      `json:"user_id"`
-	Amount              float64    `json:"amount"`
-	PayAmount           float64    `json:"pay_amount"`
-	FeeRate             float64    `json:"fee_rate"`
-	Currency            string     `json:"currency"`
-	PaymentType         string     `json:"payment_type"`
-	OutTradeNo          string     `json:"out_trade_no"`
-	Status              string     `json:"status"`
-	OrderType           string     `json:"order_type"`
-	CreatedAt           time.Time  `json:"created_at"`
-	ExpiresAt           time.Time  `json:"expires_at"`
-	PaidAt              *time.Time `json:"paid_at,omitempty"`
-	CompletedAt         *time.Time `json:"completed_at,omitempty"`
-	RefundAmount        float64    `json:"refund_amount"`
-	RefundReason        *string    `json:"refund_reason,omitempty"`
-	RefundRequestedAt   *time.Time `json:"refund_requested_at,omitempty"`
-	RefundRequestedBy   *string    `json:"refund_requested_by,omitempty"`
-	RefundRequestReason *string    `json:"refund_request_reason,omitempty"`
-	PlanID              *int64     `json:"plan_id,omitempty"`
-	ProviderInstanceID  *string    `json:"provider_instance_id,omitempty"`
+	service.PaymentOrderDecimalFields
+	Checkout             *service.PaymentCheckout `json:"checkout,omitempty"`
+	ConfirmationRequired bool                     `json:"confirmation_required"`
+	PaymentUnknown       bool                     `json:"payment_unknown,omitempty"`
+	ID                   int64                    `json:"id"`
+	UserID               int64                    `json:"user_id"`
+	Amount               float64                  `json:"amount"`
+	PayAmount            float64                  `json:"pay_amount"`
+	FeeRate              float64                  `json:"fee_rate"`
+	Currency             string                   `json:"currency"`
+	PaymentType          string                   `json:"payment_type"`
+	OutTradeNo           string                   `json:"out_trade_no"`
+	Status               string                   `json:"status"`
+	OrderType            string                   `json:"order_type"`
+	CreatedAt            time.Time                `json:"created_at"`
+	ExpiresAt            time.Time                `json:"expires_at"`
+	PaidAt               *time.Time               `json:"paid_at,omitempty"`
+	CompletedAt          *time.Time               `json:"completed_at,omitempty"`
+	RefundAmount         float64                  `json:"refund_amount"`
+	RefundReason         *string                  `json:"refund_reason,omitempty"`
+	RefundRequestedAt    *time.Time               `json:"refund_requested_at,omitempty"`
+	RefundRequestedBy    *string                  `json:"refund_requested_by,omitempty"`
+	RefundRequestReason  *string                  `json:"refund_request_reason,omitempty"`
+	PlanID               *int64                   `json:"plan_id,omitempty"`
+	ProviderInstanceID   *string                  `json:"provider_instance_id,omitempty"`
 }
 
 func sanitizePaymentOrdersForResponse(orders []*dbent.PaymentOrder) []PaymentOrderResult {
@@ -658,27 +714,31 @@ func sanitizePaymentOrderForResponse(order *dbent.PaymentOrder) *PaymentOrderRes
 		return nil
 	}
 	return &PaymentOrderResult{
-		ID:                  order.ID,
-		UserID:              order.UserID,
-		Amount:              order.Amount,
-		PayAmount:           order.PayAmount,
-		FeeRate:             order.FeeRate,
-		Currency:            service.PaymentOrderCurrency(order),
-		PaymentType:         order.PaymentType,
-		OutTradeNo:          order.OutTradeNo,
-		Status:              order.Status,
-		OrderType:           order.OrderType,
-		CreatedAt:           order.CreatedAt,
-		ExpiresAt:           order.ExpiresAt,
-		PaidAt:              order.PaidAt,
-		CompletedAt:         order.CompletedAt,
-		RefundAmount:        order.RefundAmount,
-		RefundReason:        order.RefundReason,
-		RefundRequestedAt:   order.RefundRequestedAt,
-		RefundRequestedBy:   order.RefundRequestedBy,
-		RefundRequestReason: order.RefundRequestReason,
-		PlanID:              order.PlanID,
-		ProviderInstanceID:  order.ProviderInstanceID,
+		PaymentOrderDecimalFields: service.PaymentOrderDecimalDetails(order),
+		Checkout:                  service.PaymentOrderCheckout(order),
+		ConfirmationRequired:      order.Status == service.OrderStatusPending && order.ConfirmationRequired,
+		PaymentUnknown:            order.ClientOrderID != nil && order.Status == service.OrderStatusPending && order.CreationState != "complete",
+		ID:                        order.ID,
+		UserID:                    order.UserID,
+		Amount:                    order.Amount,
+		PayAmount:                 order.PayAmount,
+		FeeRate:                   order.FeeRate,
+		Currency:                  service.PaymentOrderCurrency(order),
+		PaymentType:               order.PaymentType,
+		OutTradeNo:                order.OutTradeNo,
+		Status:                    order.Status,
+		OrderType:                 order.OrderType,
+		CreatedAt:                 order.CreatedAt,
+		ExpiresAt:                 order.ExpiresAt,
+		PaidAt:                    order.PaidAt,
+		CompletedAt:               order.CompletedAt,
+		RefundAmount:              order.RefundAmount,
+		RefundReason:              order.RefundReason,
+		RefundRequestedAt:         order.RefundRequestedAt,
+		RefundRequestedBy:         order.RefundRequestedBy,
+		RefundRequestReason:       order.RefundRequestReason,
+		PlanID:                    order.PlanID,
+		ProviderInstanceID:        order.ProviderInstanceID,
 	}
 }
 

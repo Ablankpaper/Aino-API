@@ -82,7 +82,20 @@ export interface CheckoutInfoResponse {
 
 // ==================== Orders ====================
 
-export interface PaymentOrder {
+export interface PaymentOrderDecimalFields {
+  client_order_id?: string
+  requested_amount_decimal?: string
+  pay_amount_decimal?: string
+  credit_amount_decimal?: string
+  fee_amount_decimal?: string
+  payment_currency?: string
+  credit_currency?: string
+}
+
+export interface PaymentOrder extends PaymentOrderDecimalFields {
+  checkout?: { qr_code?: string; pay_url?: string; expires_at: string }
+  confirmation_required?: boolean
+  payment_unknown?: boolean
   id: number
   user_id: number
   amount: number
@@ -167,7 +180,10 @@ export interface ProviderInstance {
 // ==================== Request / Response ====================
 
 export interface CreateOrderRequest {
-  amount: number
+  amount?: number
+  amount_decimal?: string
+  client_order_id?: string
+  expected_quote?: PaymentQuote
   payment_type: string
   order_type: string
   plan_id?: number
@@ -198,7 +214,10 @@ export interface WechatJSAPIPayload {
   paySign?: string
 }
 
-export interface CreateOrderResult {
+export interface CreateOrderResult extends PaymentOrderDecimalFields {
+  checkout?: PaymentOrder['checkout']
+  confirmation_required?: boolean
+  payment_unknown?: boolean
   order_id: number
   amount: number
   pay_url?: string
@@ -220,6 +239,15 @@ export interface CreateOrderResult {
   oauth?: WechatOAuthInfo
   jsapi?: WechatJSAPIPayload
   jsapi_payload?: WechatJSAPIPayload
+}
+
+export interface PaymentQuote {
+  requested_amount: string
+  pay_amount: string
+  payment_currency: string
+  credit_amount: string
+  credit_currency: string
+  fee_amount: string
 }
 
 export type CurrencyAmounts = Record<string, number>

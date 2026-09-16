@@ -21,6 +21,18 @@ type PaymentOrder struct {
 	ID int64 `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int64 `json:"user_id,omitempty"`
+	// ClientOrderID holds the value of the "client_order_id" field.
+	ClientOrderID *string `json:"client_order_id,omitempty"`
+	// RequestHash holds the value of the "request_hash" field.
+	RequestHash string `json:"request_hash,omitempty"`
+	// CreationState holds the value of the "creation_state" field.
+	CreationState string `json:"creation_state,omitempty"`
+	// CreationLeaseToken holds the value of the "creation_lease_token" field.
+	CreationLeaseToken string `json:"creation_lease_token,omitempty"`
+	// CreationLeaseUntil holds the value of the "creation_lease_until" field.
+	CreationLeaseUntil *time.Time `json:"creation_lease_until,omitempty"`
+	// ConfirmationRequired holds the value of the "confirmation_required" field.
+	ConfirmationRequired bool `json:"confirmation_required,omitempty"`
 	// UserEmail holds the value of the "user_email" field.
 	UserEmail string `json:"user_email,omitempty"`
 	// UserName holds the value of the "user_name" field.
@@ -130,15 +142,15 @@ func (*PaymentOrder) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case paymentorder.FieldProviderSnapshot:
 			values[i] = new([]byte)
-		case paymentorder.FieldForceRefund:
+		case paymentorder.FieldConfirmationRequired, paymentorder.FieldForceRefund:
 			values[i] = new(sql.NullBool)
 		case paymentorder.FieldAmount, paymentorder.FieldPayAmount, paymentorder.FieldFeeRate, paymentorder.FieldRefundAmount:
 			values[i] = new(sql.NullFloat64)
 		case paymentorder.FieldID, paymentorder.FieldUserID, paymentorder.FieldPlanID, paymentorder.FieldSubscriptionGroupID, paymentorder.FieldSubscriptionDays:
 			values[i] = new(sql.NullInt64)
-		case paymentorder.FieldUserEmail, paymentorder.FieldUserName, paymentorder.FieldUserNotes, paymentorder.FieldRechargeCode, paymentorder.FieldOutTradeNo, paymentorder.FieldPaymentType, paymentorder.FieldPaymentTradeNo, paymentorder.FieldPayURL, paymentorder.FieldQrCode, paymentorder.FieldQrCodeImg, paymentorder.FieldOrderType, paymentorder.FieldProviderInstanceID, paymentorder.FieldProviderKey, paymentorder.FieldStatus, paymentorder.FieldRefundReason, paymentorder.FieldRefundRequestReason, paymentorder.FieldRefundRequestedBy, paymentorder.FieldFailedReason, paymentorder.FieldClientIP, paymentorder.FieldSrcHost, paymentorder.FieldSrcURL:
+		case paymentorder.FieldClientOrderID, paymentorder.FieldRequestHash, paymentorder.FieldCreationState, paymentorder.FieldCreationLeaseToken, paymentorder.FieldUserEmail, paymentorder.FieldUserName, paymentorder.FieldUserNotes, paymentorder.FieldRechargeCode, paymentorder.FieldOutTradeNo, paymentorder.FieldPaymentType, paymentorder.FieldPaymentTradeNo, paymentorder.FieldPayURL, paymentorder.FieldQrCode, paymentorder.FieldQrCodeImg, paymentorder.FieldOrderType, paymentorder.FieldProviderInstanceID, paymentorder.FieldProviderKey, paymentorder.FieldStatus, paymentorder.FieldRefundReason, paymentorder.FieldRefundRequestReason, paymentorder.FieldRefundRequestedBy, paymentorder.FieldFailedReason, paymentorder.FieldClientIP, paymentorder.FieldSrcHost, paymentorder.FieldSrcURL:
 			values[i] = new(sql.NullString)
-		case paymentorder.FieldRefundAt, paymentorder.FieldRefundRequestedAt, paymentorder.FieldExpiresAt, paymentorder.FieldPaidAt, paymentorder.FieldCompletedAt, paymentorder.FieldFailedAt, paymentorder.FieldCreatedAt, paymentorder.FieldUpdatedAt:
+		case paymentorder.FieldCreationLeaseUntil, paymentorder.FieldRefundAt, paymentorder.FieldRefundRequestedAt, paymentorder.FieldExpiresAt, paymentorder.FieldPaidAt, paymentorder.FieldCompletedAt, paymentorder.FieldFailedAt, paymentorder.FieldCreatedAt, paymentorder.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -166,6 +178,44 @@ func (_m *PaymentOrder) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
 				_m.UserID = value.Int64
+			}
+		case paymentorder.FieldClientOrderID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field client_order_id", values[i])
+			} else if value.Valid {
+				_m.ClientOrderID = new(string)
+				*_m.ClientOrderID = value.String
+			}
+		case paymentorder.FieldRequestHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field request_hash", values[i])
+			} else if value.Valid {
+				_m.RequestHash = value.String
+			}
+		case paymentorder.FieldCreationState:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field creation_state", values[i])
+			} else if value.Valid {
+				_m.CreationState = value.String
+			}
+		case paymentorder.FieldCreationLeaseToken:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field creation_lease_token", values[i])
+			} else if value.Valid {
+				_m.CreationLeaseToken = value.String
+			}
+		case paymentorder.FieldCreationLeaseUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field creation_lease_until", values[i])
+			} else if value.Valid {
+				_m.CreationLeaseUntil = new(time.Time)
+				*_m.CreationLeaseUntil = value.Time
+			}
+		case paymentorder.FieldConfirmationRequired:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field confirmation_required", values[i])
+			} else if value.Valid {
+				_m.ConfirmationRequired = value.Bool
 			}
 		case paymentorder.FieldUserEmail:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -459,6 +509,28 @@ func (_m *PaymentOrder) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("user_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
+	builder.WriteString(", ")
+	if v := _m.ClientOrderID; v != nil {
+		builder.WriteString("client_order_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("request_hash=")
+	builder.WriteString(_m.RequestHash)
+	builder.WriteString(", ")
+	builder.WriteString("creation_state=")
+	builder.WriteString(_m.CreationState)
+	builder.WriteString(", ")
+	builder.WriteString("creation_lease_token=")
+	builder.WriteString(_m.CreationLeaseToken)
+	builder.WriteString(", ")
+	if v := _m.CreationLeaseUntil; v != nil {
+		builder.WriteString("creation_lease_until=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("confirmation_required=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ConfirmationRequired))
 	builder.WriteString(", ")
 	builder.WriteString("user_email=")
 	builder.WriteString(_m.UserEmail)

@@ -31529,6 +31529,12 @@ type PaymentOrderMutation struct {
 	op                       Op
 	typ                      string
 	id                       *int64
+	client_order_id          *string
+	request_hash             *string
+	creation_state           *string
+	creation_lease_token     *string
+	creation_lease_until     *time.Time
+	confirmation_required    *bool
 	user_email               *string
 	user_name                *string
 	user_notes               *string
@@ -31714,6 +31720,248 @@ func (m *PaymentOrderMutation) OldUserID(ctx context.Context) (v int64, err erro
 // ResetUserID resets all changes to the "user_id" field.
 func (m *PaymentOrderMutation) ResetUserID() {
 	m.user = nil
+}
+
+// SetClientOrderID sets the "client_order_id" field.
+func (m *PaymentOrderMutation) SetClientOrderID(s string) {
+	m.client_order_id = &s
+}
+
+// ClientOrderID returns the value of the "client_order_id" field in the mutation.
+func (m *PaymentOrderMutation) ClientOrderID() (r string, exists bool) {
+	v := m.client_order_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldClientOrderID returns the old "client_order_id" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldClientOrderID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldClientOrderID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldClientOrderID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldClientOrderID: %w", err)
+	}
+	return oldValue.ClientOrderID, nil
+}
+
+// ClearClientOrderID clears the value of the "client_order_id" field.
+func (m *PaymentOrderMutation) ClearClientOrderID() {
+	m.client_order_id = nil
+	m.clearedFields[paymentorder.FieldClientOrderID] = struct{}{}
+}
+
+// ClientOrderIDCleared returns if the "client_order_id" field was cleared in this mutation.
+func (m *PaymentOrderMutation) ClientOrderIDCleared() bool {
+	_, ok := m.clearedFields[paymentorder.FieldClientOrderID]
+	return ok
+}
+
+// ResetClientOrderID resets all changes to the "client_order_id" field.
+func (m *PaymentOrderMutation) ResetClientOrderID() {
+	m.client_order_id = nil
+	delete(m.clearedFields, paymentorder.FieldClientOrderID)
+}
+
+// SetRequestHash sets the "request_hash" field.
+func (m *PaymentOrderMutation) SetRequestHash(s string) {
+	m.request_hash = &s
+}
+
+// RequestHash returns the value of the "request_hash" field in the mutation.
+func (m *PaymentOrderMutation) RequestHash() (r string, exists bool) {
+	v := m.request_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestHash returns the old "request_hash" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldRequestHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestHash: %w", err)
+	}
+	return oldValue.RequestHash, nil
+}
+
+// ResetRequestHash resets all changes to the "request_hash" field.
+func (m *PaymentOrderMutation) ResetRequestHash() {
+	m.request_hash = nil
+}
+
+// SetCreationState sets the "creation_state" field.
+func (m *PaymentOrderMutation) SetCreationState(s string) {
+	m.creation_state = &s
+}
+
+// CreationState returns the value of the "creation_state" field in the mutation.
+func (m *PaymentOrderMutation) CreationState() (r string, exists bool) {
+	v := m.creation_state
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreationState returns the old "creation_state" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldCreationState(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreationState is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreationState requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreationState: %w", err)
+	}
+	return oldValue.CreationState, nil
+}
+
+// ResetCreationState resets all changes to the "creation_state" field.
+func (m *PaymentOrderMutation) ResetCreationState() {
+	m.creation_state = nil
+}
+
+// SetCreationLeaseToken sets the "creation_lease_token" field.
+func (m *PaymentOrderMutation) SetCreationLeaseToken(s string) {
+	m.creation_lease_token = &s
+}
+
+// CreationLeaseToken returns the value of the "creation_lease_token" field in the mutation.
+func (m *PaymentOrderMutation) CreationLeaseToken() (r string, exists bool) {
+	v := m.creation_lease_token
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreationLeaseToken returns the old "creation_lease_token" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldCreationLeaseToken(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreationLeaseToken is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreationLeaseToken requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreationLeaseToken: %w", err)
+	}
+	return oldValue.CreationLeaseToken, nil
+}
+
+// ResetCreationLeaseToken resets all changes to the "creation_lease_token" field.
+func (m *PaymentOrderMutation) ResetCreationLeaseToken() {
+	m.creation_lease_token = nil
+}
+
+// SetCreationLeaseUntil sets the "creation_lease_until" field.
+func (m *PaymentOrderMutation) SetCreationLeaseUntil(t time.Time) {
+	m.creation_lease_until = &t
+}
+
+// CreationLeaseUntil returns the value of the "creation_lease_until" field in the mutation.
+func (m *PaymentOrderMutation) CreationLeaseUntil() (r time.Time, exists bool) {
+	v := m.creation_lease_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreationLeaseUntil returns the old "creation_lease_until" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldCreationLeaseUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreationLeaseUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreationLeaseUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreationLeaseUntil: %w", err)
+	}
+	return oldValue.CreationLeaseUntil, nil
+}
+
+// ClearCreationLeaseUntil clears the value of the "creation_lease_until" field.
+func (m *PaymentOrderMutation) ClearCreationLeaseUntil() {
+	m.creation_lease_until = nil
+	m.clearedFields[paymentorder.FieldCreationLeaseUntil] = struct{}{}
+}
+
+// CreationLeaseUntilCleared returns if the "creation_lease_until" field was cleared in this mutation.
+func (m *PaymentOrderMutation) CreationLeaseUntilCleared() bool {
+	_, ok := m.clearedFields[paymentorder.FieldCreationLeaseUntil]
+	return ok
+}
+
+// ResetCreationLeaseUntil resets all changes to the "creation_lease_until" field.
+func (m *PaymentOrderMutation) ResetCreationLeaseUntil() {
+	m.creation_lease_until = nil
+	delete(m.clearedFields, paymentorder.FieldCreationLeaseUntil)
+}
+
+// SetConfirmationRequired sets the "confirmation_required" field.
+func (m *PaymentOrderMutation) SetConfirmationRequired(b bool) {
+	m.confirmation_required = &b
+}
+
+// ConfirmationRequired returns the value of the "confirmation_required" field in the mutation.
+func (m *PaymentOrderMutation) ConfirmationRequired() (r bool, exists bool) {
+	v := m.confirmation_required
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfirmationRequired returns the old "confirmation_required" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldConfirmationRequired(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfirmationRequired is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfirmationRequired requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfirmationRequired: %w", err)
+	}
+	return oldValue.ConfirmationRequired, nil
+}
+
+// ResetConfirmationRequired resets all changes to the "confirmation_required" field.
+func (m *PaymentOrderMutation) ResetConfirmationRequired() {
+	m.confirmation_required = nil
 }
 
 // SetUserEmail sets the "user_email" field.
@@ -33548,9 +33796,27 @@ func (m *PaymentOrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentOrderMutation) Fields() []string {
-	fields := make([]string, 0, 39)
+	fields := make([]string, 0, 45)
 	if m.user != nil {
 		fields = append(fields, paymentorder.FieldUserID)
+	}
+	if m.client_order_id != nil {
+		fields = append(fields, paymentorder.FieldClientOrderID)
+	}
+	if m.request_hash != nil {
+		fields = append(fields, paymentorder.FieldRequestHash)
+	}
+	if m.creation_state != nil {
+		fields = append(fields, paymentorder.FieldCreationState)
+	}
+	if m.creation_lease_token != nil {
+		fields = append(fields, paymentorder.FieldCreationLeaseToken)
+	}
+	if m.creation_lease_until != nil {
+		fields = append(fields, paymentorder.FieldCreationLeaseUntil)
+	}
+	if m.confirmation_required != nil {
+		fields = append(fields, paymentorder.FieldConfirmationRequired)
 	}
 	if m.user_email != nil {
 		fields = append(fields, paymentorder.FieldUserEmail)
@@ -33676,6 +33942,18 @@ func (m *PaymentOrderMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case paymentorder.FieldUserID:
 		return m.UserID()
+	case paymentorder.FieldClientOrderID:
+		return m.ClientOrderID()
+	case paymentorder.FieldRequestHash:
+		return m.RequestHash()
+	case paymentorder.FieldCreationState:
+		return m.CreationState()
+	case paymentorder.FieldCreationLeaseToken:
+		return m.CreationLeaseToken()
+	case paymentorder.FieldCreationLeaseUntil:
+		return m.CreationLeaseUntil()
+	case paymentorder.FieldConfirmationRequired:
+		return m.ConfirmationRequired()
 	case paymentorder.FieldUserEmail:
 		return m.UserEmail()
 	case paymentorder.FieldUserName:
@@ -33763,6 +34041,18 @@ func (m *PaymentOrderMutation) OldField(ctx context.Context, name string) (ent.V
 	switch name {
 	case paymentorder.FieldUserID:
 		return m.OldUserID(ctx)
+	case paymentorder.FieldClientOrderID:
+		return m.OldClientOrderID(ctx)
+	case paymentorder.FieldRequestHash:
+		return m.OldRequestHash(ctx)
+	case paymentorder.FieldCreationState:
+		return m.OldCreationState(ctx)
+	case paymentorder.FieldCreationLeaseToken:
+		return m.OldCreationLeaseToken(ctx)
+	case paymentorder.FieldCreationLeaseUntil:
+		return m.OldCreationLeaseUntil(ctx)
+	case paymentorder.FieldConfirmationRequired:
+		return m.OldConfirmationRequired(ctx)
 	case paymentorder.FieldUserEmail:
 		return m.OldUserEmail(ctx)
 	case paymentorder.FieldUserName:
@@ -33854,6 +34144,48 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUserID(v)
+		return nil
+	case paymentorder.FieldClientOrderID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetClientOrderID(v)
+		return nil
+	case paymentorder.FieldRequestHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestHash(v)
+		return nil
+	case paymentorder.FieldCreationState:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreationState(v)
+		return nil
+	case paymentorder.FieldCreationLeaseToken:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreationLeaseToken(v)
+		return nil
+	case paymentorder.FieldCreationLeaseUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreationLeaseUntil(v)
+		return nil
+	case paymentorder.FieldConfirmationRequired:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfirmationRequired(v)
 		return nil
 	case paymentorder.FieldUserEmail:
 		v, ok := value.(string)
@@ -34238,6 +34570,12 @@ func (m *PaymentOrderMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *PaymentOrderMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(paymentorder.FieldClientOrderID) {
+		fields = append(fields, paymentorder.FieldClientOrderID)
+	}
+	if m.FieldCleared(paymentorder.FieldCreationLeaseUntil) {
+		fields = append(fields, paymentorder.FieldCreationLeaseUntil)
+	}
 	if m.FieldCleared(paymentorder.FieldUserNotes) {
 		fields = append(fields, paymentorder.FieldUserNotes)
 	}
@@ -34312,6 +34650,12 @@ func (m *PaymentOrderMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *PaymentOrderMutation) ClearField(name string) error {
 	switch name {
+	case paymentorder.FieldClientOrderID:
+		m.ClearClientOrderID()
+		return nil
+	case paymentorder.FieldCreationLeaseUntil:
+		m.ClearCreationLeaseUntil()
+		return nil
 	case paymentorder.FieldUserNotes:
 		m.ClearUserNotes()
 		return nil
@@ -34382,6 +34726,24 @@ func (m *PaymentOrderMutation) ResetField(name string) error {
 	switch name {
 	case paymentorder.FieldUserID:
 		m.ResetUserID()
+		return nil
+	case paymentorder.FieldClientOrderID:
+		m.ResetClientOrderID()
+		return nil
+	case paymentorder.FieldRequestHash:
+		m.ResetRequestHash()
+		return nil
+	case paymentorder.FieldCreationState:
+		m.ResetCreationState()
+		return nil
+	case paymentorder.FieldCreationLeaseToken:
+		m.ResetCreationLeaseToken()
+		return nil
+	case paymentorder.FieldCreationLeaseUntil:
+		m.ResetCreationLeaseUntil()
+		return nil
+	case paymentorder.FieldConfirmationRequired:
+		m.ResetConfirmationRequired()
 		return nil
 	case paymentorder.FieldUserEmail:
 		m.ResetUserEmail()
