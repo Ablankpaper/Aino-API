@@ -4,6 +4,7 @@ package repository_test
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http/httptest"
 	"strings"
@@ -37,11 +38,14 @@ type phoneAuthFlowRig struct {
 }
 
 func newPhoneAuthFlowRig(t *testing.T) *phoneAuthFlowRig {
+	return newPhoneAuthFlowRigWithStorage(t, repository.GetIntegrationEntClient(), repository.GetIntegrationDB())
+}
+
+func newPhoneAuthFlowRigWithStorage(t *testing.T, client *dbent.Client, db *sql.DB) *phoneAuthFlowRig {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	ctx := context.Background()
-	client := repository.GetIntegrationEntClient()
-	userRepo := repository.NewUserRepository(client, repository.GetIntegrationDB())
+	userRepo := repository.NewUserRepository(client, db)
 	settingRepo := repository.NewSettingRepository(client)
 	settingValues := map[string]string{
 		service.SettingKeyRegistrationEnabled:     "true",
