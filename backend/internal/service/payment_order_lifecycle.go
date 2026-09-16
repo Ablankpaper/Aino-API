@@ -182,12 +182,14 @@ func (s *PaymentService) checkPaidWithOptions(ctx context.Context, o *dbent.Paym
 		}
 		notificationTradeNo := o.PaymentTradeNo
 		if upstreamTradeNo := strings.TrimSpace(resp.TradeNo); paymentOrderShouldPersistUpstreamTradeNo(queryRef, upstreamTradeNo, notificationTradeNo) {
-			if _, updateErr := s.entClient.PaymentOrder.Update().
-				Where(paymentorder.IDEQ(o.ID)).
+			// A callback may have acquired fulfillment while this query was in
+			// flight. Its updated_at lease version must survive this stale read.
+			if updated, updateErr := s.entClient.PaymentOrder.Update().
+				Where(paymentorder.IDEQ(o.ID), paymentorder.StatusEQ(OrderStatusPending), paymentorder.PaymentTradeNoNEQ(upstreamTradeNo)).
 				SetPaymentTradeNo(upstreamTradeNo).
 				Save(ctx); updateErr != nil {
 				slog.Error("persist upstream trade no during checkPaid failed", "orderID", o.ID, "tradeNo", upstreamTradeNo, "error", updateErr)
-			} else {
+			} else if updated > 0 {
 				o.PaymentTradeNo = upstreamTradeNo
 			}
 			notificationTradeNo = upstreamTradeNo

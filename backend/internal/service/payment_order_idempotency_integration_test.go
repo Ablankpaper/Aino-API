@@ -48,6 +48,7 @@ type paymentIdempotencyRig struct {
 	db              *sql.DB
 	cfg             *service.PaymentConfigService
 	timeoutResponse atomic.Bool
+	queryReply      func(http.ResponseWriter, *http.Request)
 }
 
 func newPaymentIdempotencyRig(t *testing.T) *paymentIdempotencyRig {
@@ -71,6 +72,10 @@ func newPaymentIdempotencyRig(t *testing.T) *paymentIdempotencyRig {
 			r.queries.Add(1)
 			if _, ok := r.merchantOrders.Load(merchant); !ok {
 				t.Errorf("query changed merchant order: %s", merchant)
+			}
+			if r.queryReply != nil {
+				r.queryReply(w, req)
+				return
 			}
 			_, _ = w.Write([]byte(`{"code":1,"status":0,"money":"20.00"}`))
 			return
@@ -413,6 +418,119 @@ func TestPaymentIdempotencyRecoveryPreservesFulfillmentLease(t *testing.T) {
 	require.Equal(t, service.OrderStatusRecharging, second.Status)
 }
 
+func (r *paymentIdempotencyRig) notify(outTradeNo, money, pid, status string, valid bool) *httptest.ResponseRecorder {
+	p := url.Values{"pid": {pid}, "out_trade_no": {outTradeNo}, "trade_no": {"fixture"}, "money": {money}, "trade_status": {status}}
+	keys := make([]string, 0, len(p))
+	for key := range p {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(p))
+	for _, key := range keys {
+		parts = append(parts, key+"="+p.Get(key))
+	}
+	sign := fmt.Sprintf("%x", md5.Sum([]byte(strings.Join(parts, "&")+"fixture-secret")))
+	if !valid {
+		sign = "invalid"
+	}
+	p.Set("sign", sign)
+	p.Set("sign_type", "MD5")
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/notify", strings.NewReader(p.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.router.ServeHTTP(w, req)
+	return w
+}
+
+func TestPaymentIdempotencyQueryBackfillPreservesCallbackFulfillmentLease(t *testing.T) {
+	r := newPaymentIdempotencyRig(t)
+	r.loseResponse.Store(true)
+	id := uuid.NewString()
+	w := r.create(id, "20")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	o, err := r.client.PaymentOrder.Query().Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "submitted", o.CreationState)
+	require.Empty(t, o.PaymentTradeNo)
+
+	queryStarted, allowQuery := make(chan struct{}), make(chan struct{})
+	fulfillmentStarted, allowFulfillment := make(chan struct{}), make(chan struct{})
+	var releaseQuery, releaseFulfillment sync.Once
+	defer releaseQuery.Do(func() { close(allowQuery) })
+	defer releaseFulfillment.Do(func() { close(allowFulfillment) })
+	r.queryReply = func(w http.ResponseWriter, req *http.Request) {
+		close(queryStarted)
+		select {
+		case <-allowQuery:
+			_, _ = w.Write([]byte(`{"code":1,"status":1,"money":"20.00","trade_no":"fixture"}`))
+		case <-ctx.Done():
+		}
+	}
+	// Redeem creation occurs after the callback has acquired and reloaded the
+	// real fulfillment lease, but before it can credit balance or complete.
+	r.client.RedeemCode.Use(func(next dbent.Mutator) dbent.Mutator {
+		return dbent.MutateFunc(func(callCtx context.Context, m dbent.Mutation) (dbent.Value, error) {
+			if m.Op() == dbent.OpCreate {
+				close(fulfillmentStarted)
+				select {
+				case <-allowFulfillment:
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
+			return next.Mutate(callCtx, m)
+		})
+	})
+	recoveryDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() { recoveryDone <- r.create(id, "20") }()
+	select {
+	case <-queryStarted:
+	case <-ctx.Done():
+		t.Fatal("recovery query did not start")
+	}
+	callbackDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() { callbackDone <- r.notify(o.OutTradeNo, "20", "fixture", "TRADE_SUCCESS", true) }()
+	select {
+	case <-fulfillmentStarted:
+	case <-ctx.Done():
+		t.Fatal("callback did not acquire fulfillment")
+	}
+	claimed, err := r.client.PaymentOrder.Get(ctx, o.ID)
+	require.NoError(t, err)
+	require.Equal(t, service.OrderStatusRecharging, claimed.Status)
+	require.Equal(t, "fixture", claimed.PaymentTradeNo)
+	releaseQuery.Do(func() { close(allowQuery) })
+	select {
+	case result := <-recoveryDone:
+		require.Equal(t, http.StatusOK, result.Code, result.Body.String())
+	case <-ctx.Done():
+		t.Fatal("recovery did not finish")
+	}
+	afterQuery, err := r.client.PaymentOrder.Get(ctx, o.ID)
+	require.NoError(t, err)
+	releaseFulfillment.Do(func() { close(allowFulfillment) })
+	select {
+	case result := <-callbackDone:
+		require.Equal(t, http.StatusOK, result.Code, result.Body.String())
+	case <-ctx.Done():
+		t.Fatal("callback did not finish")
+	}
+	finished, err := r.client.PaymentOrder.Get(ctx, o.ID)
+	require.NoError(t, err)
+	u, err := r.client.User.Get(ctx, r.userID)
+	require.NoError(t, err)
+	require.Equal(t, 20.0, u.Balance)
+	require.Equal(t, service.OrderStatusCompleted, finished.Status)
+	require.True(t, claimed.UpdatedAt.Equal(afterQuery.UpdatedAt), "query backfill must preserve the callback's fulfillment lease version")
+	r.notify(o.OutTradeNo, "20", "fixture", "TRADE_SUCCESS", true)
+	u, err = r.client.User.Get(ctx, r.userID)
+	require.NoError(t, err)
+	require.Equal(t, 20.0, u.Balance)
+	require.EqualValues(t, 1, r.creates.Load())
+}
+
 func TestPaymentIdempotencySignedCallbacksCreditOnlyOnce(t *testing.T) {
 	r := newPaymentIdempotencyRig(t)
 	w := r.create(uuid.NewString(), "20")
@@ -420,27 +538,7 @@ func TestPaymentIdempotencySignedCallbacksCreditOnlyOnce(t *testing.T) {
 	o, err := r.client.PaymentOrder.Query().Only(context.Background())
 	require.NoError(t, err)
 	notify := func(money, pid, status string, valid bool) *httptest.ResponseRecorder {
-		p := url.Values{"pid": {pid}, "out_trade_no": {o.OutTradeNo}, "trade_no": {"fixture"}, "money": {money}, "trade_status": {status}}
-		keys := make([]string, 0, len(p))
-		for key := range p {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		parts := make([]string, 0, len(p))
-		for _, key := range keys {
-			parts = append(parts, key+"="+p.Get(key))
-		}
-		sign := fmt.Sprintf("%x", md5.Sum([]byte(strings.Join(parts, "&")+"fixture-secret")))
-		if !valid {
-			sign = "invalid"
-		}
-		p.Set("sign", sign)
-		p.Set("sign_type", "MD5")
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/notify", strings.NewReader(p.Encode()))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		r.router.ServeHTTP(w, req)
-		return w
+		return r.notify(o.OutTradeNo, money, pid, status, valid)
 	}
 	notify("20", "fixture", "TRADE_SUCCESS", false)
 	notify("30", "fixture", "TRADE_SUCCESS", true)
