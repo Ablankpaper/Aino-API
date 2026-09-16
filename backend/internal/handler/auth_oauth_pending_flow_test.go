@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -2470,6 +2472,67 @@ func TestLogin2FACompletesPendingOAuthBindAndConsumesSession(t *testing.T) {
 	require.Equal(t, 6, storedUser.Concurrency)
 	require.Equal(t, 1, countProviderGrantRecords(t, client, existingUser.ID, "oidc", "first_bind"))
 	require.Empty(t, defaultSubAssigner.calls)
+}
+
+func TestLogin2FADebugLogsRedactTemporaryTokenAndSessionEmail(t *testing.T) {
+	const (
+		invalidToken = "temp-seq"
+		validToken   = "valid-temp-token-canary"
+		sessionEmail = "login-2fa-email-canary@example.com"
+	)
+
+	cache := &oauthPendingFlowTotpCacheStub{
+		loginSessions: map[string]*service.TotpLoginSession{
+			validToken: {
+				UserID: 42,
+				Email:  sessionEmail,
+			},
+		},
+	}
+	handler, client := newOAuthPendingFlowTestHandlerWithDependencies(t, oauthPendingFlowTestHandlerOptions{
+		totpCache:     cache,
+		totpEncryptor: oauthPendingFlowTotpEncryptorStub{},
+	})
+
+	secret := "JBSWY3DPEHPK3PXP"
+	user, err := client.User.Create().
+		SetEmail(sessionEmail).
+		SetUsername("login-2fa-log-user").
+		SetPasswordHash("password-hash").
+		SetBalance(0).
+		SetConcurrency(1).
+		SetRole(service.RoleUser).
+		SetStatus(service.StatusActive).
+		SetTotpEnabled(true).
+		SetTotpSecretEncrypted(secret).
+		Save(context.Background())
+	require.NoError(t, err)
+	cache.loginSessions[validToken].UserID = user.ID
+
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	for _, tempToken := range []string{invalidToken, validToken} {
+		recorder := httptest.NewRecorder()
+		ginCtx, _ := gin.CreateTestContext(recorder)
+		body := bytes.NewBufferString(`{"temp_token":"` + tempToken + `","totp_code":"000000"}`)
+		ginCtx.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/login/2fa", body)
+		ginCtx.Request.Header.Set("Content-Type", "application/json")
+
+		handler.Login2FA(ginCtx)
+
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+	}
+
+	output := logs.String()
+	require.Contains(t, output, "login_2fa_session_invalid")
+	require.Contains(t, output, "login_2fa_session_found")
+	require.Contains(t, output, "user_id="+strconv.FormatInt(user.ID, 10))
+	require.NotContains(t, output, invalidToken)
+	require.NotContains(t, output, validToken)
+	require.NotContains(t, output, sessionEmail)
 }
 
 func newOAuthPendingFlowTestHandler(t *testing.T, invitationEnabled bool) (*AuthHandler, *dbent.Client) {
