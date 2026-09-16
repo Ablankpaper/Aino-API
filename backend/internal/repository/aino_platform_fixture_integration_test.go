@@ -35,6 +35,8 @@ type ainoPlatformFixture struct {
 	server                   *httptest.Server
 	runID                    string
 	modelCalls, paymentCalls atomic.Int64
+	modelProvider            http.Handler
+	modelGroupID             int64
 }
 
 func newAinoPlatformFixture(t *testing.T) *ainoPlatformFixture {
@@ -54,7 +56,7 @@ func newAinoPlatformFixture(t *testing.T) *ainoPlatformFixture {
 
 func (r *ainoPlatformFixture) wireModel(t *testing.T, userID int64) {
 	t.Helper()
-	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	protocol := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.URL.Path != "/v1/chat/completions" || req.Header.Get("Authorization") != "Bearer fixture-upstream-key" {
 			t.Errorf("provider received unexpected route %s or upstream authentication", req.URL.Path)
 			http.Error(w, "fixture protocol mismatch", 400)
@@ -71,8 +73,22 @@ func (r *ainoPlatformFixture) wireModel(t *testing.T, userID int64) {
 				Role       string `json:"role"`
 				Content    string `json:"content"`
 				ToolCallID string `json:"tool_call_id"`
+				ToolCalls  []struct {
+					ID       string `json:"id"`
+					Function struct {
+						Name      string `json:"name"`
+						Arguments string `json:"arguments"`
+					} `json:"function"`
+				} `json:"tool_calls"`
 			} `json:"messages"`
-			Tools []json.RawMessage `json:"tools"`
+			Tools []struct {
+				Function struct {
+					Name       string `json:"name"`
+					Parameters struct {
+						Properties map[string]any `json:"properties"`
+					} `json:"parameters"`
+				} `json:"function"`
+			} `json:"tools"`
 		}
 		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 			t.Error(err)
@@ -84,12 +100,34 @@ func (r *ainoPlatformFixture) wireModel(t *testing.T, userID int64) {
 			http.Error(w, "invalid fixture request", 400)
 			return
 		}
+		if body.Tools[0].Function.Name != "fixture_read" || body.Tools[0].Function.Parameters.Properties["path"] == nil {
+			t.Error("fixture tool definition does not match requested tool")
+			http.Error(w, "invalid fixture tool definition", 400)
+			return
+		}
 		call := r.modelCalls.Add(1)
 		last := body.Messages[len(body.Messages)-1]
 		message := map[string]any{"role": "assistant", "content": nil, "tool_calls": []any{map[string]any{"id": "fixture-tool-call", "type": "function", "function": map[string]any{"name": "fixture_read", "arguments": `{"path":"fixture.txt"}`}}}}
 		finish := "tool_calls"
 		if last.Role == "tool" {
-			if last.ToolCallID != "fixture-tool-call" || last.Content != "fixture-file-content" {
+			matched := false
+			for index := len(body.Messages) - 2; index >= 0; index-- {
+				message := body.Messages[index]
+				if message.Role == "tool" {
+					continue
+				}
+				if message.Role != "assistant" {
+					break
+				}
+				for _, tool := range message.ToolCalls {
+					var args map[string]string
+					if tool.ID == last.ToolCallID && tool.Function.Name == "fixture_read" && json.Unmarshal([]byte(tool.Function.Arguments), &args) == nil && args["path"] == "fixture.txt" {
+						matched = true
+					}
+				}
+				break
+			}
+			if last.ToolCallID != "fixture-tool-call" || last.Content != "fixture-file-content" || !matched {
 				t.Error("tool result lost in proxy")
 				http.Error(w, "invalid tool result", 400)
 				return
@@ -100,14 +138,22 @@ func (r *ainoPlatformFixture) wireModel(t *testing.T, userID int64) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("x-request-id", fmt.Sprintf("fixture-%s-%d", r.runID, call))
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": fmt.Sprintf("fixture-%d", call), "object": "chat.completion", "created": time.Now().Unix(), "model": body.Model, "choices": []any{map[string]any{"index": 0, "message": message, "finish_reason": finish}}, "usage": map[string]int{"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}})
-	}))
+	})
+	var providerHandler http.Handler = protocol
+	if r.modelProvider != nil {
+		providerHandler = r.modelProvider
+	}
+	provider := httptest.NewServer(providerHandler)
 	t.Cleanup(provider.Close)
 	g := r.group(t, false)
 	input, output := 2e-6, 6e-6
 	g.ModelPricing = []service.ChannelModelPricing{{Models: []string{"fixture-*"}, InputPrice: &input, OutputPrice: &output}}
 	g.ModelAllowlist = service.GroupModelAllowlist{Enabled: true, Models: []string{"fixture-tool-model"}}
 	require.NoError(t, r.groups.Update(r.ctx, g))
-	require.NoError(t, r.userRepo.AddGroupToAllowedGroups(r.ctx, userID, g.ID))
+	r.modelGroupID = g.ID
+	if userID > 0 {
+		require.NoError(t, r.userRepo.AddGroupToAllowedGroups(r.ctx, userID, g.ID))
+	}
 	r.catalog(t, []service.DesktopModelEntry{desktopEntry("fixture-tool-model", g.ID)}, "fixture-tool-model")
 	db := repository.GetIntegrationDB()
 	accounts := repository.NewAccountRepository(r.client, db, nil)
@@ -183,7 +229,7 @@ func (r *ainoPlatformFixture) http(t *testing.T, method, path, body, token strin
 	}
 	res, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
 	require.NoError(t, err)
-	defer res.Body.Close()
+	defer func() { require.NoError(t, res.Body.Close()) }()
 	data, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 	return res.StatusCode, data

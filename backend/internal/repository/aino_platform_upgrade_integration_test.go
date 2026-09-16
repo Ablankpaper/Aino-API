@@ -86,6 +86,10 @@ func TestAinoPlatformPrePhoneSchemaUpgradePreservesExistingAccount(t *testing.T)
 	require.Equal(t, "1.2500000000", subscriptionUsage)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM auth_identities WHERE user_id=$1 AND provider_type IN ('email','oidc','phone')", userID).Scan(&count))
 	require.Equal(t, 3, count)
+	var providerKey, providerSubject string
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT provider_key,provider_subject FROM auth_identities WHERE user_id=$1 AND provider_type='oidc'", userID).Scan(&providerKey, &providerSubject))
+	require.Equal(t, "fixture-oidc", providerKey)
+	require.Equal(t, "fixture-"+runID, providerSubject)
 	require.NoError(t, repository.ApplyMigrations(ctx, db), "restarting migration runner must retain the upgraded data")
 	t.Logf("run_id=%s schema through 238 -> all migrations; same user/email/OIDC/ordinary key/order/subscription/balance; phone login and old email login verified; old server binary rollback NOT exercised", runID)
 }
