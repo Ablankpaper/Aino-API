@@ -269,6 +269,86 @@ func (_u *UsageLogUpdate) ClearBillingMode() *UsageLogUpdate {
 	return _u
 }
 
+// SetDesktopTurnID sets the "desktop_turn_id" field.
+func (_u *UsageLogUpdate) SetDesktopTurnID(v string) *UsageLogUpdate {
+	_u.mutation.SetDesktopTurnID(v)
+	return _u
+}
+
+// SetNillableDesktopTurnID sets the "desktop_turn_id" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableDesktopTurnID(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetDesktopTurnID(*v)
+	}
+	return _u
+}
+
+// ClearDesktopTurnID clears the value of the "desktop_turn_id" field.
+func (_u *UsageLogUpdate) ClearDesktopTurnID() *UsageLogUpdate {
+	_u.mutation.ClearDesktopTurnID()
+	return _u
+}
+
+// SetDesktopCallID sets the "desktop_call_id" field.
+func (_u *UsageLogUpdate) SetDesktopCallID(v string) *UsageLogUpdate {
+	_u.mutation.SetDesktopCallID(v)
+	return _u
+}
+
+// SetNillableDesktopCallID sets the "desktop_call_id" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableDesktopCallID(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetDesktopCallID(*v)
+	}
+	return _u
+}
+
+// ClearDesktopCallID clears the value of the "desktop_call_id" field.
+func (_u *UsageLogUpdate) ClearDesktopCallID() *UsageLogUpdate {
+	_u.mutation.ClearDesktopCallID()
+	return _u
+}
+
+// SetDesktopPurpose sets the "desktop_purpose" field.
+func (_u *UsageLogUpdate) SetDesktopPurpose(v string) *UsageLogUpdate {
+	_u.mutation.SetDesktopPurpose(v)
+	return _u
+}
+
+// SetNillableDesktopPurpose sets the "desktop_purpose" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableDesktopPurpose(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetDesktopPurpose(*v)
+	}
+	return _u
+}
+
+// ClearDesktopPurpose clears the value of the "desktop_purpose" field.
+func (_u *UsageLogUpdate) ClearDesktopPurpose() *UsageLogUpdate {
+	_u.mutation.ClearDesktopPurpose()
+	return _u
+}
+
+// SetSettlementStatus sets the "settlement_status" field.
+func (_u *UsageLogUpdate) SetSettlementStatus(v string) *UsageLogUpdate {
+	_u.mutation.SetSettlementStatus(v)
+	return _u
+}
+
+// SetNillableSettlementStatus sets the "settlement_status" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableSettlementStatus(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetSettlementStatus(*v)
+	}
+	return _u
+}
+
+// ClearSettlementStatus clears the value of the "settlement_status" field.
+func (_u *UsageLogUpdate) ClearSettlementStatus() *UsageLogUpdate {
+	_u.mutation.ClearSettlementStatus()
+	return _u
+}
+
 // SetGroupID sets the "group_id" field.
 func (_u *UsageLogUpdate) SetGroupID(v int64) *UsageLogUpdate {
 	_u.mutation.SetGroupID(v)
@@ -1076,6 +1156,26 @@ func (_u *UsageLogUpdate) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "UsageLog.billing_mode": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.DesktopTurnID(); ok {
+		if err := usagelog.DesktopTurnIDValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_turn_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_turn_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DesktopCallID(); ok {
+		if err := usagelog.DesktopCallIDValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_call_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_call_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DesktopPurpose(); ok {
+		if err := usagelog.DesktopPurposeValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_purpose", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_purpose": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SettlementStatus(); ok {
+		if err := usagelog.SettlementStatusValidator(v); err != nil {
+			return &ValidationError{Name: "settlement_status", err: fmt.Errorf(`ent: validator failed for field "UsageLog.settlement_status": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserAgent(); ok {
 		if err := usagelog.UserAgentValidator(v); err != nil {
 			return &ValidationError{Name: "user_agent", err: fmt.Errorf(`ent: validator failed for field "UsageLog.user_agent": %w`, err)}
@@ -1191,6 +1291,30 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.BillingModeCleared() {
 		_spec.ClearField(usagelog.FieldBillingMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.DesktopTurnID(); ok {
+		_spec.SetField(usagelog.FieldDesktopTurnID, field.TypeString, value)
+	}
+	if _u.mutation.DesktopTurnIDCleared() {
+		_spec.ClearField(usagelog.FieldDesktopTurnID, field.TypeString)
+	}
+	if value, ok := _u.mutation.DesktopCallID(); ok {
+		_spec.SetField(usagelog.FieldDesktopCallID, field.TypeString, value)
+	}
+	if _u.mutation.DesktopCallIDCleared() {
+		_spec.ClearField(usagelog.FieldDesktopCallID, field.TypeString)
+	}
+	if value, ok := _u.mutation.DesktopPurpose(); ok {
+		_spec.SetField(usagelog.FieldDesktopPurpose, field.TypeString, value)
+	}
+	if _u.mutation.DesktopPurposeCleared() {
+		_spec.ClearField(usagelog.FieldDesktopPurpose, field.TypeString)
+	}
+	if value, ok := _u.mutation.SettlementStatus(); ok {
+		_spec.SetField(usagelog.FieldSettlementStatus, field.TypeString, value)
+	}
+	if _u.mutation.SettlementStatusCleared() {
+		_spec.ClearField(usagelog.FieldSettlementStatus, field.TypeString)
 	}
 	if value, ok := _u.mutation.InputTokens(); ok {
 		_spec.SetField(usagelog.FieldInputTokens, field.TypeInt, value)
@@ -1780,6 +1904,86 @@ func (_u *UsageLogUpdateOne) SetNillableBillingMode(v *string) *UsageLogUpdateOn
 // ClearBillingMode clears the value of the "billing_mode" field.
 func (_u *UsageLogUpdateOne) ClearBillingMode() *UsageLogUpdateOne {
 	_u.mutation.ClearBillingMode()
+	return _u
+}
+
+// SetDesktopTurnID sets the "desktop_turn_id" field.
+func (_u *UsageLogUpdateOne) SetDesktopTurnID(v string) *UsageLogUpdateOne {
+	_u.mutation.SetDesktopTurnID(v)
+	return _u
+}
+
+// SetNillableDesktopTurnID sets the "desktop_turn_id" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableDesktopTurnID(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetDesktopTurnID(*v)
+	}
+	return _u
+}
+
+// ClearDesktopTurnID clears the value of the "desktop_turn_id" field.
+func (_u *UsageLogUpdateOne) ClearDesktopTurnID() *UsageLogUpdateOne {
+	_u.mutation.ClearDesktopTurnID()
+	return _u
+}
+
+// SetDesktopCallID sets the "desktop_call_id" field.
+func (_u *UsageLogUpdateOne) SetDesktopCallID(v string) *UsageLogUpdateOne {
+	_u.mutation.SetDesktopCallID(v)
+	return _u
+}
+
+// SetNillableDesktopCallID sets the "desktop_call_id" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableDesktopCallID(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetDesktopCallID(*v)
+	}
+	return _u
+}
+
+// ClearDesktopCallID clears the value of the "desktop_call_id" field.
+func (_u *UsageLogUpdateOne) ClearDesktopCallID() *UsageLogUpdateOne {
+	_u.mutation.ClearDesktopCallID()
+	return _u
+}
+
+// SetDesktopPurpose sets the "desktop_purpose" field.
+func (_u *UsageLogUpdateOne) SetDesktopPurpose(v string) *UsageLogUpdateOne {
+	_u.mutation.SetDesktopPurpose(v)
+	return _u
+}
+
+// SetNillableDesktopPurpose sets the "desktop_purpose" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableDesktopPurpose(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetDesktopPurpose(*v)
+	}
+	return _u
+}
+
+// ClearDesktopPurpose clears the value of the "desktop_purpose" field.
+func (_u *UsageLogUpdateOne) ClearDesktopPurpose() *UsageLogUpdateOne {
+	_u.mutation.ClearDesktopPurpose()
+	return _u
+}
+
+// SetSettlementStatus sets the "settlement_status" field.
+func (_u *UsageLogUpdateOne) SetSettlementStatus(v string) *UsageLogUpdateOne {
+	_u.mutation.SetSettlementStatus(v)
+	return _u
+}
+
+// SetNillableSettlementStatus sets the "settlement_status" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableSettlementStatus(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetSettlementStatus(*v)
+	}
+	return _u
+}
+
+// ClearSettlementStatus clears the value of the "settlement_status" field.
+func (_u *UsageLogUpdateOne) ClearSettlementStatus() *UsageLogUpdateOne {
+	_u.mutation.ClearSettlementStatus()
 	return _u
 }
 
@@ -2603,6 +2807,26 @@ func (_u *UsageLogUpdateOne) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "UsageLog.billing_mode": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.DesktopTurnID(); ok {
+		if err := usagelog.DesktopTurnIDValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_turn_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_turn_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DesktopCallID(); ok {
+		if err := usagelog.DesktopCallIDValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_call_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_call_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.DesktopPurpose(); ok {
+		if err := usagelog.DesktopPurposeValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_purpose", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_purpose": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SettlementStatus(); ok {
+		if err := usagelog.SettlementStatusValidator(v); err != nil {
+			return &ValidationError{Name: "settlement_status", err: fmt.Errorf(`ent: validator failed for field "UsageLog.settlement_status": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.UserAgent(); ok {
 		if err := usagelog.UserAgentValidator(v); err != nil {
 			return &ValidationError{Name: "user_agent", err: fmt.Errorf(`ent: validator failed for field "UsageLog.user_agent": %w`, err)}
@@ -2735,6 +2959,30 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.BillingModeCleared() {
 		_spec.ClearField(usagelog.FieldBillingMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.DesktopTurnID(); ok {
+		_spec.SetField(usagelog.FieldDesktopTurnID, field.TypeString, value)
+	}
+	if _u.mutation.DesktopTurnIDCleared() {
+		_spec.ClearField(usagelog.FieldDesktopTurnID, field.TypeString)
+	}
+	if value, ok := _u.mutation.DesktopCallID(); ok {
+		_spec.SetField(usagelog.FieldDesktopCallID, field.TypeString, value)
+	}
+	if _u.mutation.DesktopCallIDCleared() {
+		_spec.ClearField(usagelog.FieldDesktopCallID, field.TypeString)
+	}
+	if value, ok := _u.mutation.DesktopPurpose(); ok {
+		_spec.SetField(usagelog.FieldDesktopPurpose, field.TypeString, value)
+	}
+	if _u.mutation.DesktopPurposeCleared() {
+		_spec.ClearField(usagelog.FieldDesktopPurpose, field.TypeString)
+	}
+	if value, ok := _u.mutation.SettlementStatus(); ok {
+		_spec.SetField(usagelog.FieldSettlementStatus, field.TypeString, value)
+	}
+	if _u.mutation.SettlementStatusCleared() {
+		_spec.ClearField(usagelog.FieldSettlementStatus, field.TypeString)
 	}
 	if value, ok := _u.mutation.InputTokens(); ok {
 		_spec.SetField(usagelog.FieldInputTokens, field.TypeInt, value)

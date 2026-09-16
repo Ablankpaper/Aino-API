@@ -49,6 +49,14 @@ type UsageLog struct {
 	BillingTier *string `json:"billing_tier,omitempty"`
 	// 计费模式：token/per_request/image
 	BillingMode *string `json:"billing_mode,omitempty"`
+	// DesktopTurnID holds the value of the "desktop_turn_id" field.
+	DesktopTurnID *string `json:"desktop_turn_id,omitempty"`
+	// DesktopCallID holds the value of the "desktop_call_id" field.
+	DesktopCallID *string `json:"desktop_call_id,omitempty"`
+	// DesktopPurpose holds the value of the "desktop_purpose" field.
+	DesktopPurpose *string `json:"desktop_purpose,omitempty"`
+	// SettlementStatus holds the value of the "settlement_status" field.
+	SettlementStatus *string `json:"settlement_status,omitempty"`
 	// GroupID holds the value of the "group_id" field.
 	GroupID *int64 `json:"group_id,omitempty"`
 	// SubscriptionID holds the value of the "subscription_id" field.
@@ -208,7 +216,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case usagelog.FieldID, usagelog.FieldUserID, usagelog.FieldAPIKeyID, usagelog.FieldAccountID, usagelog.FieldChannelID, usagelog.FieldGroupID, usagelog.FieldSubscriptionID, usagelog.FieldInputTokens, usagelog.FieldOutputTokens, usagelog.FieldCacheCreationTokens, usagelog.FieldCacheReadTokens, usagelog.FieldCacheCreation5mTokens, usagelog.FieldCacheCreation1hTokens, usagelog.FieldBillingType, usagelog.FieldDurationMs, usagelog.FieldFirstTokenMs, usagelog.FieldImageCount, usagelog.FieldVideoCount, usagelog.FieldVideoDurationSeconds:
 			values[i] = new(sql.NullInt64)
-		case usagelog.FieldRequestID, usagelog.FieldModel, usagelog.FieldRequestedModel, usagelog.FieldUpstreamModel, usagelog.FieldUpstreamResponseModel, usagelog.FieldModelMappingChain, usagelog.FieldBillingTier, usagelog.FieldBillingMode, usagelog.FieldUserAgent, usagelog.FieldIPAddress, usagelog.FieldImageSize, usagelog.FieldImageInputSize, usagelog.FieldImageOutputSize, usagelog.FieldImageSizeSource, usagelog.FieldVideoResolution:
+		case usagelog.FieldRequestID, usagelog.FieldModel, usagelog.FieldRequestedModel, usagelog.FieldUpstreamModel, usagelog.FieldUpstreamResponseModel, usagelog.FieldModelMappingChain, usagelog.FieldBillingTier, usagelog.FieldBillingMode, usagelog.FieldDesktopTurnID, usagelog.FieldDesktopCallID, usagelog.FieldDesktopPurpose, usagelog.FieldSettlementStatus, usagelog.FieldUserAgent, usagelog.FieldIPAddress, usagelog.FieldImageSize, usagelog.FieldImageInputSize, usagelog.FieldImageOutputSize, usagelog.FieldImageSizeSource, usagelog.FieldVideoResolution:
 			values[i] = new(sql.NullString)
 		case usagelog.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -318,6 +326,34 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.BillingMode = new(string)
 				*_m.BillingMode = value.String
+			}
+		case usagelog.FieldDesktopTurnID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field desktop_turn_id", values[i])
+			} else if value.Valid {
+				_m.DesktopTurnID = new(string)
+				*_m.DesktopTurnID = value.String
+			}
+		case usagelog.FieldDesktopCallID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field desktop_call_id", values[i])
+			} else if value.Valid {
+				_m.DesktopCallID = new(string)
+				*_m.DesktopCallID = value.String
+			}
+		case usagelog.FieldDesktopPurpose:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field desktop_purpose", values[i])
+			} else if value.Valid {
+				_m.DesktopPurpose = new(string)
+				*_m.DesktopPurpose = value.String
+			}
+		case usagelog.FieldSettlementStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field settlement_status", values[i])
+			} else if value.Valid {
+				_m.SettlementStatus = new(string)
+				*_m.SettlementStatus = value.String
 			}
 		case usagelog.FieldGroupID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -651,6 +687,26 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	if v := _m.BillingMode; v != nil {
 		builder.WriteString("billing_mode=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DesktopTurnID; v != nil {
+		builder.WriteString("desktop_turn_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DesktopCallID; v != nil {
+		builder.WriteString("desktop_call_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DesktopPurpose; v != nil {
+		builder.WriteString("desktop_purpose=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.SettlementStatus; v != nil {
+		builder.WriteString("settlement_status=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

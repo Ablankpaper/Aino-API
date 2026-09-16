@@ -19,7 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
-const usageLogSelectColumns = "id, user_id, api_key_id, account_id, request_id, model, requested_model, upstream_model, upstream_response_model, upstream_model_mismatch, group_id, subscription_id, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cache_creation_5m_tokens, cache_creation_1h_tokens, image_output_tokens, image_output_cost, image_input_tokens, image_input_cost, input_cost, output_cost, cache_creation_cost, cache_read_cost, total_cost, actual_cost, rate_multiplier, account_rate_multiplier, billing_type, request_type, stream, openai_ws_mode, duration_ms, first_token_ms, user_agent, ip_address, image_count, image_size, image_input_size, image_output_size, image_size_source, image_size_breakdown, video_count, video_resolution, video_duration_seconds, service_tier, reasoning_effort, requested_reasoning_effort, inbound_endpoint, upstream_endpoint, cache_ttl_overridden, long_context_billing_applied, channel_id, model_mapping_chain, billing_tier, billing_mode, account_stats_cost, upstream_request_id, session_id, native_compaction_v2, created_at"
+const usageLogSelectColumns = "id, user_id, api_key_id, account_id, request_id, model, requested_model, upstream_model, upstream_response_model, upstream_model_mismatch, group_id, subscription_id, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cache_creation_5m_tokens, cache_creation_1h_tokens, image_output_tokens, image_output_cost, image_input_tokens, image_input_cost, input_cost, output_cost, cache_creation_cost, cache_read_cost, total_cost, actual_cost, rate_multiplier, account_rate_multiplier, billing_type, request_type, stream, openai_ws_mode, duration_ms, first_token_ms, user_agent, ip_address, image_count, image_size, image_input_size, image_output_size, image_size_source, image_size_breakdown, video_count, video_resolution, video_duration_seconds, service_tier, reasoning_effort, requested_reasoning_effort, inbound_endpoint, upstream_endpoint, cache_ttl_overridden, long_context_billing_applied, channel_id, model_mapping_chain, billing_tier, billing_mode, account_stats_cost, upstream_request_id, session_id, native_compaction_v2, desktop_turn_id, desktop_call_id, desktop_purpose, settlement_status, created_at, CASE WHEN settlement_status = 'settled' THEN ROUND(actual_cost, 8)::text WHEN settlement_status = 'not_charged' THEN '0.00000000' ELSE NULL END"
 
 func (r *usageLogRepository) GetByID(ctx context.Context, id int64) (log *service.UsageLog, err error) {
 	query := "SELECT " + usageLogSelectColumns + " FROM usage_logs WHERE id = $1"
@@ -120,6 +120,7 @@ func (r *usageLogRepository) ListWithFilters(ctx context.Context, params paginat
 		conditions = append(conditions, fmt.Sprintf("request_id = $%d", len(args)+1))
 		args = append(args, requestID)
 	}
+	conditions, args = appendDesktopUsageFilters(conditions, args, filters)
 	conditions, args = appendUsageLogModelWhereCondition(conditions, args, filters.Model, filters.ModelFilterSource)
 	conditions, args = appendRequestTypeOrStreamWhereCondition(conditions, args, filters.RequestType, filters.Stream)
 	conditions, args = appendNativeCompactionV2WhereCondition(conditions, args, filters.NativeCompactionV2, "")
@@ -503,6 +504,11 @@ func scanUsageLog(scanner interface{ Scan(...any) error }) (*service.UsageLog, e
 		sessionID                 sql.NullString
 		nativeCompactionV2        bool
 		createdAt                 time.Time
+		desktopTurnID             sql.NullString
+		desktopCallID             sql.NullString
+		desktopPurpose            sql.NullString
+		settlementStatus          sql.NullString
+		actualCostDecimal         sql.NullString
 	)
 
 	if err := scanner.Scan(
@@ -568,12 +574,22 @@ func scanUsageLog(scanner interface{ Scan(...any) error }) (*service.UsageLog, e
 		&upstreamRequestID,
 		&sessionID,
 		&nativeCompactionV2,
+		&desktopTurnID,
+		&desktopCallID,
+		&desktopPurpose,
+		&settlementStatus,
 		&createdAt,
+		&actualCostDecimal,
 	); err != nil {
 		return nil, err
 	}
 
 	log := &service.UsageLog{
+		DesktopTurnID:             nullableDesktopString(desktopTurnID),
+		DesktopCallID:             nullableDesktopString(desktopCallID),
+		DesktopPurpose:            nullableDesktopString(desktopPurpose),
+		SettlementStatus:          "unknown",
+		ActualCostDecimal:         nullableDesktopString(actualCostDecimal),
 		ID:                        id,
 		UserID:                    userID,
 		APIKeyID:                  apiKeyID,
@@ -701,6 +717,9 @@ func scanUsageLog(scanner interface{ Scan(...any) error }) (*service.UsageLog, e
 	}
 	if sessionID.Valid {
 		log.SessionID = &sessionID.String
+	}
+	if settlementStatus.Valid {
+		log.SettlementStatus = settlementStatus.String
 	}
 	if upstreamRequestID.Valid {
 		log.UpstreamRequestID = &upstreamRequestID.String

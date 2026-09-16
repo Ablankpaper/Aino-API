@@ -169,6 +169,62 @@ func (_c *UsageLogCreate) SetNillableBillingMode(v *string) *UsageLogCreate {
 	return _c
 }
 
+// SetDesktopTurnID sets the "desktop_turn_id" field.
+func (_c *UsageLogCreate) SetDesktopTurnID(v string) *UsageLogCreate {
+	_c.mutation.SetDesktopTurnID(v)
+	return _c
+}
+
+// SetNillableDesktopTurnID sets the "desktop_turn_id" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableDesktopTurnID(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetDesktopTurnID(*v)
+	}
+	return _c
+}
+
+// SetDesktopCallID sets the "desktop_call_id" field.
+func (_c *UsageLogCreate) SetDesktopCallID(v string) *UsageLogCreate {
+	_c.mutation.SetDesktopCallID(v)
+	return _c
+}
+
+// SetNillableDesktopCallID sets the "desktop_call_id" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableDesktopCallID(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetDesktopCallID(*v)
+	}
+	return _c
+}
+
+// SetDesktopPurpose sets the "desktop_purpose" field.
+func (_c *UsageLogCreate) SetDesktopPurpose(v string) *UsageLogCreate {
+	_c.mutation.SetDesktopPurpose(v)
+	return _c
+}
+
+// SetNillableDesktopPurpose sets the "desktop_purpose" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableDesktopPurpose(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetDesktopPurpose(*v)
+	}
+	return _c
+}
+
+// SetSettlementStatus sets the "settlement_status" field.
+func (_c *UsageLogCreate) SetSettlementStatus(v string) *UsageLogCreate {
+	_c.mutation.SetSettlementStatus(v)
+	return _c
+}
+
+// SetNillableSettlementStatus sets the "settlement_status" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableSettlementStatus(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetSettlementStatus(*v)
+	}
+	return _c
+}
+
 // SetGroupID sets the "group_id" field.
 func (_c *UsageLogCreate) SetGroupID(v int64) *UsageLogCreate {
 	_c.mutation.SetGroupID(v)
@@ -836,6 +892,26 @@ func (_c *UsageLogCreate) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "UsageLog.billing_mode": %w`, err)}
 		}
 	}
+	if v, ok := _c.mutation.DesktopTurnID(); ok {
+		if err := usagelog.DesktopTurnIDValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_turn_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_turn_id": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.DesktopCallID(); ok {
+		if err := usagelog.DesktopCallIDValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_call_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_call_id": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.DesktopPurpose(); ok {
+		if err := usagelog.DesktopPurposeValidator(v); err != nil {
+			return &ValidationError{Name: "desktop_purpose", err: fmt.Errorf(`ent: validator failed for field "UsageLog.desktop_purpose": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.SettlementStatus(); ok {
+		if err := usagelog.SettlementStatusValidator(v); err != nil {
+			return &ValidationError{Name: "settlement_status", err: fmt.Errorf(`ent: validator failed for field "UsageLog.settlement_status": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.InputTokens(); !ok {
 		return &ValidationError{Name: "input_tokens", err: errors.New(`ent: missing required field "UsageLog.input_tokens"`)}
 	}
@@ -1006,6 +1082,22 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.BillingMode(); ok {
 		_spec.SetField(usagelog.FieldBillingMode, field.TypeString, value)
 		_node.BillingMode = &value
+	}
+	if value, ok := _c.mutation.DesktopTurnID(); ok {
+		_spec.SetField(usagelog.FieldDesktopTurnID, field.TypeString, value)
+		_node.DesktopTurnID = &value
+	}
+	if value, ok := _c.mutation.DesktopCallID(); ok {
+		_spec.SetField(usagelog.FieldDesktopCallID, field.TypeString, value)
+		_node.DesktopCallID = &value
+	}
+	if value, ok := _c.mutation.DesktopPurpose(); ok {
+		_spec.SetField(usagelog.FieldDesktopPurpose, field.TypeString, value)
+		_node.DesktopPurpose = &value
+	}
+	if value, ok := _c.mutation.SettlementStatus(); ok {
+		_spec.SetField(usagelog.FieldSettlementStatus, field.TypeString, value)
+		_node.SettlementStatus = &value
 	}
 	if value, ok := _c.mutation.InputTokens(); ok {
 		_spec.SetField(usagelog.FieldInputTokens, field.TypeInt, value)
@@ -1479,6 +1571,78 @@ func (u *UsageLogUpsert) UpdateBillingMode() *UsageLogUpsert {
 // ClearBillingMode clears the value of the "billing_mode" field.
 func (u *UsageLogUpsert) ClearBillingMode() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldBillingMode)
+	return u
+}
+
+// SetDesktopTurnID sets the "desktop_turn_id" field.
+func (u *UsageLogUpsert) SetDesktopTurnID(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldDesktopTurnID, v)
+	return u
+}
+
+// UpdateDesktopTurnID sets the "desktop_turn_id" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateDesktopTurnID() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldDesktopTurnID)
+	return u
+}
+
+// ClearDesktopTurnID clears the value of the "desktop_turn_id" field.
+func (u *UsageLogUpsert) ClearDesktopTurnID() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldDesktopTurnID)
+	return u
+}
+
+// SetDesktopCallID sets the "desktop_call_id" field.
+func (u *UsageLogUpsert) SetDesktopCallID(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldDesktopCallID, v)
+	return u
+}
+
+// UpdateDesktopCallID sets the "desktop_call_id" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateDesktopCallID() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldDesktopCallID)
+	return u
+}
+
+// ClearDesktopCallID clears the value of the "desktop_call_id" field.
+func (u *UsageLogUpsert) ClearDesktopCallID() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldDesktopCallID)
+	return u
+}
+
+// SetDesktopPurpose sets the "desktop_purpose" field.
+func (u *UsageLogUpsert) SetDesktopPurpose(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldDesktopPurpose, v)
+	return u
+}
+
+// UpdateDesktopPurpose sets the "desktop_purpose" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateDesktopPurpose() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldDesktopPurpose)
+	return u
+}
+
+// ClearDesktopPurpose clears the value of the "desktop_purpose" field.
+func (u *UsageLogUpsert) ClearDesktopPurpose() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldDesktopPurpose)
+	return u
+}
+
+// SetSettlementStatus sets the "settlement_status" field.
+func (u *UsageLogUpsert) SetSettlementStatus(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldSettlementStatus, v)
+	return u
+}
+
+// UpdateSettlementStatus sets the "settlement_status" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateSettlementStatus() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldSettlementStatus)
+	return u
+}
+
+// ClearSettlementStatus clears the value of the "settlement_status" field.
+func (u *UsageLogUpsert) ClearSettlementStatus() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldSettlementStatus)
 	return u
 }
 
@@ -2369,6 +2533,90 @@ func (u *UsageLogUpsertOne) UpdateBillingMode() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearBillingMode() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearBillingMode()
+	})
+}
+
+// SetDesktopTurnID sets the "desktop_turn_id" field.
+func (u *UsageLogUpsertOne) SetDesktopTurnID(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetDesktopTurnID(v)
+	})
+}
+
+// UpdateDesktopTurnID sets the "desktop_turn_id" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateDesktopTurnID() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateDesktopTurnID()
+	})
+}
+
+// ClearDesktopTurnID clears the value of the "desktop_turn_id" field.
+func (u *UsageLogUpsertOne) ClearDesktopTurnID() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearDesktopTurnID()
+	})
+}
+
+// SetDesktopCallID sets the "desktop_call_id" field.
+func (u *UsageLogUpsertOne) SetDesktopCallID(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetDesktopCallID(v)
+	})
+}
+
+// UpdateDesktopCallID sets the "desktop_call_id" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateDesktopCallID() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateDesktopCallID()
+	})
+}
+
+// ClearDesktopCallID clears the value of the "desktop_call_id" field.
+func (u *UsageLogUpsertOne) ClearDesktopCallID() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearDesktopCallID()
+	})
+}
+
+// SetDesktopPurpose sets the "desktop_purpose" field.
+func (u *UsageLogUpsertOne) SetDesktopPurpose(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetDesktopPurpose(v)
+	})
+}
+
+// UpdateDesktopPurpose sets the "desktop_purpose" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateDesktopPurpose() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateDesktopPurpose()
+	})
+}
+
+// ClearDesktopPurpose clears the value of the "desktop_purpose" field.
+func (u *UsageLogUpsertOne) ClearDesktopPurpose() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearDesktopPurpose()
+	})
+}
+
+// SetSettlementStatus sets the "settlement_status" field.
+func (u *UsageLogUpsertOne) SetSettlementStatus(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetSettlementStatus(v)
+	})
+}
+
+// UpdateSettlementStatus sets the "settlement_status" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateSettlementStatus() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateSettlementStatus()
+	})
+}
+
+// ClearSettlementStatus clears the value of the "settlement_status" field.
+func (u *UsageLogUpsertOne) ClearSettlementStatus() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearSettlementStatus()
 	})
 }
 
@@ -3525,6 +3773,90 @@ func (u *UsageLogUpsertBulk) UpdateBillingMode() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearBillingMode() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearBillingMode()
+	})
+}
+
+// SetDesktopTurnID sets the "desktop_turn_id" field.
+func (u *UsageLogUpsertBulk) SetDesktopTurnID(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetDesktopTurnID(v)
+	})
+}
+
+// UpdateDesktopTurnID sets the "desktop_turn_id" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateDesktopTurnID() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateDesktopTurnID()
+	})
+}
+
+// ClearDesktopTurnID clears the value of the "desktop_turn_id" field.
+func (u *UsageLogUpsertBulk) ClearDesktopTurnID() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearDesktopTurnID()
+	})
+}
+
+// SetDesktopCallID sets the "desktop_call_id" field.
+func (u *UsageLogUpsertBulk) SetDesktopCallID(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetDesktopCallID(v)
+	})
+}
+
+// UpdateDesktopCallID sets the "desktop_call_id" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateDesktopCallID() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateDesktopCallID()
+	})
+}
+
+// ClearDesktopCallID clears the value of the "desktop_call_id" field.
+func (u *UsageLogUpsertBulk) ClearDesktopCallID() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearDesktopCallID()
+	})
+}
+
+// SetDesktopPurpose sets the "desktop_purpose" field.
+func (u *UsageLogUpsertBulk) SetDesktopPurpose(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetDesktopPurpose(v)
+	})
+}
+
+// UpdateDesktopPurpose sets the "desktop_purpose" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateDesktopPurpose() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateDesktopPurpose()
+	})
+}
+
+// ClearDesktopPurpose clears the value of the "desktop_purpose" field.
+func (u *UsageLogUpsertBulk) ClearDesktopPurpose() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearDesktopPurpose()
+	})
+}
+
+// SetSettlementStatus sets the "settlement_status" field.
+func (u *UsageLogUpsertBulk) SetSettlementStatus(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetSettlementStatus(v)
+	})
+}
+
+// UpdateSettlementStatus sets the "settlement_status" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateSettlementStatus() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateSettlementStatus()
+	})
+}
+
+// ClearSettlementStatus clears the value of the "settlement_status" field.
+func (u *UsageLogUpsertBulk) ClearSettlementStatus() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearSettlementStatus()
 	})
 }
 

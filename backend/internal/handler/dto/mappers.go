@@ -693,6 +693,10 @@ func usageLogFromServiceUser(l *service.UsageLog) UsageLog {
 	if requestedModel == "" {
 		requestedModel = l.Model
 	}
+	settlementStatus := l.SettlementStatus
+	if settlementStatus == "" {
+		settlementStatus = "unknown"
+	}
 	return UsageLog{
 		ID:                        l.ID,
 		UserID:                    l.UserID,
@@ -740,6 +744,12 @@ func usageLogFromServiceUser(l *service.UsageLog) UsageLog {
 		UserAgent:                 l.UserAgent,
 		IPAddress:                 l.IPAddress,
 		SessionID:                 l.SessionID,
+		DesktopTurnID:             l.DesktopTurnID,
+		DesktopCallID:             l.DesktopCallID,
+		DesktopPurpose:            l.DesktopPurpose,
+		SettlementStatus:          settlementStatus,
+		ActualCostDecimal:         l.ActualCostDecimal,
+		Currency:                  "USD",
 		CacheTTLOverridden:        l.CacheTTLOverridden,
 		BillingMode:               l.BillingMode,
 		CreatedAt:                 l.CreatedAt,

@@ -45966,6 +45966,10 @@ type UsageLogMutation struct {
 	model_mapping_chain          *string
 	billing_tier                 *string
 	billing_mode                 *string
+	desktop_turn_id              *string
+	desktop_call_id              *string
+	desktop_purpose              *string
+	settlement_status            *string
 	input_tokens                 *int
 	addinput_tokens              *int
 	output_tokens                *int
@@ -46723,6 +46727,202 @@ func (m *UsageLogMutation) BillingModeCleared() bool {
 func (m *UsageLogMutation) ResetBillingMode() {
 	m.billing_mode = nil
 	delete(m.clearedFields, usagelog.FieldBillingMode)
+}
+
+// SetDesktopTurnID sets the "desktop_turn_id" field.
+func (m *UsageLogMutation) SetDesktopTurnID(s string) {
+	m.desktop_turn_id = &s
+}
+
+// DesktopTurnID returns the value of the "desktop_turn_id" field in the mutation.
+func (m *UsageLogMutation) DesktopTurnID() (r string, exists bool) {
+	v := m.desktop_turn_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDesktopTurnID returns the old "desktop_turn_id" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldDesktopTurnID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDesktopTurnID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDesktopTurnID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDesktopTurnID: %w", err)
+	}
+	return oldValue.DesktopTurnID, nil
+}
+
+// ClearDesktopTurnID clears the value of the "desktop_turn_id" field.
+func (m *UsageLogMutation) ClearDesktopTurnID() {
+	m.desktop_turn_id = nil
+	m.clearedFields[usagelog.FieldDesktopTurnID] = struct{}{}
+}
+
+// DesktopTurnIDCleared returns if the "desktop_turn_id" field was cleared in this mutation.
+func (m *UsageLogMutation) DesktopTurnIDCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldDesktopTurnID]
+	return ok
+}
+
+// ResetDesktopTurnID resets all changes to the "desktop_turn_id" field.
+func (m *UsageLogMutation) ResetDesktopTurnID() {
+	m.desktop_turn_id = nil
+	delete(m.clearedFields, usagelog.FieldDesktopTurnID)
+}
+
+// SetDesktopCallID sets the "desktop_call_id" field.
+func (m *UsageLogMutation) SetDesktopCallID(s string) {
+	m.desktop_call_id = &s
+}
+
+// DesktopCallID returns the value of the "desktop_call_id" field in the mutation.
+func (m *UsageLogMutation) DesktopCallID() (r string, exists bool) {
+	v := m.desktop_call_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDesktopCallID returns the old "desktop_call_id" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldDesktopCallID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDesktopCallID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDesktopCallID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDesktopCallID: %w", err)
+	}
+	return oldValue.DesktopCallID, nil
+}
+
+// ClearDesktopCallID clears the value of the "desktop_call_id" field.
+func (m *UsageLogMutation) ClearDesktopCallID() {
+	m.desktop_call_id = nil
+	m.clearedFields[usagelog.FieldDesktopCallID] = struct{}{}
+}
+
+// DesktopCallIDCleared returns if the "desktop_call_id" field was cleared in this mutation.
+func (m *UsageLogMutation) DesktopCallIDCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldDesktopCallID]
+	return ok
+}
+
+// ResetDesktopCallID resets all changes to the "desktop_call_id" field.
+func (m *UsageLogMutation) ResetDesktopCallID() {
+	m.desktop_call_id = nil
+	delete(m.clearedFields, usagelog.FieldDesktopCallID)
+}
+
+// SetDesktopPurpose sets the "desktop_purpose" field.
+func (m *UsageLogMutation) SetDesktopPurpose(s string) {
+	m.desktop_purpose = &s
+}
+
+// DesktopPurpose returns the value of the "desktop_purpose" field in the mutation.
+func (m *UsageLogMutation) DesktopPurpose() (r string, exists bool) {
+	v := m.desktop_purpose
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDesktopPurpose returns the old "desktop_purpose" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldDesktopPurpose(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDesktopPurpose is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDesktopPurpose requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDesktopPurpose: %w", err)
+	}
+	return oldValue.DesktopPurpose, nil
+}
+
+// ClearDesktopPurpose clears the value of the "desktop_purpose" field.
+func (m *UsageLogMutation) ClearDesktopPurpose() {
+	m.desktop_purpose = nil
+	m.clearedFields[usagelog.FieldDesktopPurpose] = struct{}{}
+}
+
+// DesktopPurposeCleared returns if the "desktop_purpose" field was cleared in this mutation.
+func (m *UsageLogMutation) DesktopPurposeCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldDesktopPurpose]
+	return ok
+}
+
+// ResetDesktopPurpose resets all changes to the "desktop_purpose" field.
+func (m *UsageLogMutation) ResetDesktopPurpose() {
+	m.desktop_purpose = nil
+	delete(m.clearedFields, usagelog.FieldDesktopPurpose)
+}
+
+// SetSettlementStatus sets the "settlement_status" field.
+func (m *UsageLogMutation) SetSettlementStatus(s string) {
+	m.settlement_status = &s
+}
+
+// SettlementStatus returns the value of the "settlement_status" field in the mutation.
+func (m *UsageLogMutation) SettlementStatus() (r string, exists bool) {
+	v := m.settlement_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSettlementStatus returns the old "settlement_status" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldSettlementStatus(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSettlementStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSettlementStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSettlementStatus: %w", err)
+	}
+	return oldValue.SettlementStatus, nil
+}
+
+// ClearSettlementStatus clears the value of the "settlement_status" field.
+func (m *UsageLogMutation) ClearSettlementStatus() {
+	m.settlement_status = nil
+	m.clearedFields[usagelog.FieldSettlementStatus] = struct{}{}
+}
+
+// SettlementStatusCleared returns if the "settlement_status" field was cleared in this mutation.
+func (m *UsageLogMutation) SettlementStatusCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldSettlementStatus]
+	return ok
+}
+
+// ResetSettlementStatus resets all changes to the "settlement_status" field.
+func (m *UsageLogMutation) ResetSettlementStatus() {
+	m.settlement_status = nil
+	delete(m.clearedFields, usagelog.FieldSettlementStatus)
 }
 
 // SetGroupID sets the "group_id" field.
@@ -48704,7 +48904,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 47)
+	fields := make([]string, 0, 51)
 	if m.user != nil {
 		fields = append(fields, usagelog.FieldUserID)
 	}
@@ -48743,6 +48943,18 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.billing_mode != nil {
 		fields = append(fields, usagelog.FieldBillingMode)
+	}
+	if m.desktop_turn_id != nil {
+		fields = append(fields, usagelog.FieldDesktopTurnID)
+	}
+	if m.desktop_call_id != nil {
+		fields = append(fields, usagelog.FieldDesktopCallID)
+	}
+	if m.desktop_purpose != nil {
+		fields = append(fields, usagelog.FieldDesktopPurpose)
+	}
+	if m.settlement_status != nil {
+		fields = append(fields, usagelog.FieldSettlementStatus)
 	}
 	if m.group != nil {
 		fields = append(fields, usagelog.FieldGroupID)
@@ -48880,6 +49092,14 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.BillingTier()
 	case usagelog.FieldBillingMode:
 		return m.BillingMode()
+	case usagelog.FieldDesktopTurnID:
+		return m.DesktopTurnID()
+	case usagelog.FieldDesktopCallID:
+		return m.DesktopCallID()
+	case usagelog.FieldDesktopPurpose:
+		return m.DesktopPurpose()
+	case usagelog.FieldSettlementStatus:
+		return m.SettlementStatus()
 	case usagelog.FieldGroupID:
 		return m.GroupID()
 	case usagelog.FieldSubscriptionID:
@@ -48983,6 +49203,14 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldBillingTier(ctx)
 	case usagelog.FieldBillingMode:
 		return m.OldBillingMode(ctx)
+	case usagelog.FieldDesktopTurnID:
+		return m.OldDesktopTurnID(ctx)
+	case usagelog.FieldDesktopCallID:
+		return m.OldDesktopCallID(ctx)
+	case usagelog.FieldDesktopPurpose:
+		return m.OldDesktopPurpose(ctx)
+	case usagelog.FieldSettlementStatus:
+		return m.OldSettlementStatus(ctx)
 	case usagelog.FieldGroupID:
 		return m.OldGroupID(ctx)
 	case usagelog.FieldSubscriptionID:
@@ -49150,6 +49378,34 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBillingMode(v)
+		return nil
+	case usagelog.FieldDesktopTurnID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDesktopTurnID(v)
+		return nil
+	case usagelog.FieldDesktopCallID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDesktopCallID(v)
+		return nil
+	case usagelog.FieldDesktopPurpose:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDesktopPurpose(v)
+		return nil
+	case usagelog.FieldSettlementStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSettlementStatus(v)
 		return nil
 	case usagelog.FieldGroupID:
 		v, ok := value.(int64)
@@ -49698,6 +49954,18 @@ func (m *UsageLogMutation) ClearedFields() []string {
 	if m.FieldCleared(usagelog.FieldBillingMode) {
 		fields = append(fields, usagelog.FieldBillingMode)
 	}
+	if m.FieldCleared(usagelog.FieldDesktopTurnID) {
+		fields = append(fields, usagelog.FieldDesktopTurnID)
+	}
+	if m.FieldCleared(usagelog.FieldDesktopCallID) {
+		fields = append(fields, usagelog.FieldDesktopCallID)
+	}
+	if m.FieldCleared(usagelog.FieldDesktopPurpose) {
+		fields = append(fields, usagelog.FieldDesktopPurpose)
+	}
+	if m.FieldCleared(usagelog.FieldSettlementStatus) {
+		fields = append(fields, usagelog.FieldSettlementStatus)
+	}
 	if m.FieldCleared(usagelog.FieldGroupID) {
 		fields = append(fields, usagelog.FieldGroupID)
 	}
@@ -49777,6 +50045,18 @@ func (m *UsageLogMutation) ClearField(name string) error {
 		return nil
 	case usagelog.FieldBillingMode:
 		m.ClearBillingMode()
+		return nil
+	case usagelog.FieldDesktopTurnID:
+		m.ClearDesktopTurnID()
+		return nil
+	case usagelog.FieldDesktopCallID:
+		m.ClearDesktopCallID()
+		return nil
+	case usagelog.FieldDesktopPurpose:
+		m.ClearDesktopPurpose()
+		return nil
+	case usagelog.FieldSettlementStatus:
+		m.ClearSettlementStatus()
 		return nil
 	case usagelog.FieldGroupID:
 		m.ClearGroupID()
@@ -49866,6 +50146,18 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldBillingMode:
 		m.ResetBillingMode()
+		return nil
+	case usagelog.FieldDesktopTurnID:
+		m.ResetDesktopTurnID()
+		return nil
+	case usagelog.FieldDesktopCallID:
+		m.ResetDesktopCallID()
+		return nil
+	case usagelog.FieldDesktopPurpose:
+		m.ResetDesktopPurpose()
+		return nil
+	case usagelog.FieldSettlementStatus:
+		m.ResetSettlementStatus()
 		return nil
 	case usagelog.FieldGroupID:
 		m.ResetGroupID()

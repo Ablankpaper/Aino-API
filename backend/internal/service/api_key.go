@@ -28,6 +28,7 @@ func IsWindowExpired(windowStart *time.Time, duration time.Duration) bool {
 }
 
 type APIKey struct {
+	DesktopUsage   *DesktopUsage `json:"-"`
 	DesktopManaged bool
 	ID             int64
 	UserID         int64

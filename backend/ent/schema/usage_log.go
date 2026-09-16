@@ -68,6 +68,10 @@ func (UsageLog) Fields() []ent.Field {
 		field.String("model_mapping_chain").MaxLen(500).Optional().Nillable().Comment("模型映射链"),
 		field.String("billing_tier").MaxLen(50).Optional().Nillable().Comment("计费层级标签"),
 		field.String("billing_mode").MaxLen(20).Optional().Nillable().Comment("计费模式：token/per_request/image"),
+		field.String("desktop_turn_id").MaxLen(36).Optional().Nillable(),
+		field.String("desktop_call_id").MaxLen(36).Optional().Nillable(),
+		field.String("desktop_purpose").MaxLen(32).Optional().Nillable(),
+		field.String("settlement_status").MaxLen(16).Optional().Nillable(),
 		field.Int64("group_id").
 			Optional().
 			Nillable(),

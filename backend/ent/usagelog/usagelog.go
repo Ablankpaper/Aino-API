@@ -40,6 +40,14 @@ const (
 	FieldBillingTier = "billing_tier"
 	// FieldBillingMode holds the string denoting the billing_mode field in the database.
 	FieldBillingMode = "billing_mode"
+	// FieldDesktopTurnID holds the string denoting the desktop_turn_id field in the database.
+	FieldDesktopTurnID = "desktop_turn_id"
+	// FieldDesktopCallID holds the string denoting the desktop_call_id field in the database.
+	FieldDesktopCallID = "desktop_call_id"
+	// FieldDesktopPurpose holds the string denoting the desktop_purpose field in the database.
+	FieldDesktopPurpose = "desktop_purpose"
+	// FieldSettlementStatus holds the string denoting the settlement_status field in the database.
+	FieldSettlementStatus = "settlement_status"
 	// FieldGroupID holds the string denoting the group_id field in the database.
 	FieldGroupID = "group_id"
 	// FieldSubscriptionID holds the string denoting the subscription_id field in the database.
@@ -173,6 +181,10 @@ var Columns = []string{
 	FieldModelMappingChain,
 	FieldBillingTier,
 	FieldBillingMode,
+	FieldDesktopTurnID,
+	FieldDesktopCallID,
+	FieldDesktopPurpose,
+	FieldSettlementStatus,
 	FieldGroupID,
 	FieldSubscriptionID,
 	FieldInputTokens,
@@ -236,6 +248,14 @@ var (
 	BillingTierValidator func(string) error
 	// BillingModeValidator is a validator for the "billing_mode" field. It is called by the builders before save.
 	BillingModeValidator func(string) error
+	// DesktopTurnIDValidator is a validator for the "desktop_turn_id" field. It is called by the builders before save.
+	DesktopTurnIDValidator func(string) error
+	// DesktopCallIDValidator is a validator for the "desktop_call_id" field. It is called by the builders before save.
+	DesktopCallIDValidator func(string) error
+	// DesktopPurposeValidator is a validator for the "desktop_purpose" field. It is called by the builders before save.
+	DesktopPurposeValidator func(string) error
+	// SettlementStatusValidator is a validator for the "settlement_status" field. It is called by the builders before save.
+	SettlementStatusValidator func(string) error
 	// DefaultInputTokens holds the default value on creation for the "input_tokens" field.
 	DefaultInputTokens int
 	// DefaultOutputTokens holds the default value on creation for the "output_tokens" field.
@@ -363,6 +383,26 @@ func ByBillingTier(opts ...sql.OrderTermOption) OrderOption {
 // ByBillingMode orders the results by the billing_mode field.
 func ByBillingMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBillingMode, opts...).ToFunc()
+}
+
+// ByDesktopTurnID orders the results by the desktop_turn_id field.
+func ByDesktopTurnID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDesktopTurnID, opts...).ToFunc()
+}
+
+// ByDesktopCallID orders the results by the desktop_call_id field.
+func ByDesktopCallID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDesktopCallID, opts...).ToFunc()
+}
+
+// ByDesktopPurpose orders the results by the desktop_purpose field.
+func ByDesktopPurpose(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDesktopPurpose, opts...).ToFunc()
+}
+
+// BySettlementStatus orders the results by the settlement_status field.
+func BySettlementStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSettlementStatus, opts...).ToFunc()
 }
 
 // ByGroupID orders the results by the group_id field.

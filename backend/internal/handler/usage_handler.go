@@ -203,8 +203,16 @@ func (h *UsageHandler) parseUserUsageFilters(c *gin.Context, requireRange bool) 
 		}
 	}
 
+	correlation, valid := parseDesktopUsageFilters(c)
+	if !valid {
+		return nil, false
+	}
 	return &userUsageFilters{
 		Filters: usagestats.UsageLogFilters{
+			SessionID:          correlation.SessionID,
+			DesktopTurnID:      correlation.DesktopTurnID,
+			DesktopCallID:      correlation.DesktopCallID,
+			DesktopPurpose:     correlation.DesktopPurpose,
 			UserID:             subject.UserID,
 			APIKeyID:           apiKeyID,
 			GroupID:            groupID,

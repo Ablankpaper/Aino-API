@@ -120,6 +120,26 @@ func BillingMode(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldBillingMode, v))
 }
 
+// DesktopTurnID applies equality check predicate on the "desktop_turn_id" field. It's identical to DesktopTurnIDEQ.
+func DesktopTurnID(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldDesktopTurnID, v))
+}
+
+// DesktopCallID applies equality check predicate on the "desktop_call_id" field. It's identical to DesktopCallIDEQ.
+func DesktopCallID(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldDesktopCallID, v))
+}
+
+// DesktopPurpose applies equality check predicate on the "desktop_purpose" field. It's identical to DesktopPurposeEQ.
+func DesktopPurpose(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldDesktopPurpose, v))
+}
+
+// SettlementStatus applies equality check predicate on the "settlement_status" field. It's identical to SettlementStatusEQ.
+func SettlementStatus(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldSettlementStatus, v))
+}
+
 // GroupID applies equality check predicate on the "group_id" field. It's identical to GroupIDEQ.
 func GroupID(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldGroupID, v))
@@ -993,6 +1013,306 @@ func BillingModeEqualFold(v string) predicate.UsageLog {
 // BillingModeContainsFold applies the ContainsFold predicate on the "billing_mode" field.
 func BillingModeContainsFold(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldContainsFold(FieldBillingMode, v))
+}
+
+// DesktopTurnIDEQ applies the EQ predicate on the "desktop_turn_id" field.
+func DesktopTurnIDEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDNEQ applies the NEQ predicate on the "desktop_turn_id" field.
+func DesktopTurnIDNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDIn applies the In predicate on the "desktop_turn_id" field.
+func DesktopTurnIDIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldDesktopTurnID, vs...))
+}
+
+// DesktopTurnIDNotIn applies the NotIn predicate on the "desktop_turn_id" field.
+func DesktopTurnIDNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldDesktopTurnID, vs...))
+}
+
+// DesktopTurnIDGT applies the GT predicate on the "desktop_turn_id" field.
+func DesktopTurnIDGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDGTE applies the GTE predicate on the "desktop_turn_id" field.
+func DesktopTurnIDGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDLT applies the LT predicate on the "desktop_turn_id" field.
+func DesktopTurnIDLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDLTE applies the LTE predicate on the "desktop_turn_id" field.
+func DesktopTurnIDLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDContains applies the Contains predicate on the "desktop_turn_id" field.
+func DesktopTurnIDContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDHasPrefix applies the HasPrefix predicate on the "desktop_turn_id" field.
+func DesktopTurnIDHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDHasSuffix applies the HasSuffix predicate on the "desktop_turn_id" field.
+func DesktopTurnIDHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDIsNil applies the IsNil predicate on the "desktop_turn_id" field.
+func DesktopTurnIDIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldDesktopTurnID))
+}
+
+// DesktopTurnIDNotNil applies the NotNil predicate on the "desktop_turn_id" field.
+func DesktopTurnIDNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldDesktopTurnID))
+}
+
+// DesktopTurnIDEqualFold applies the EqualFold predicate on the "desktop_turn_id" field.
+func DesktopTurnIDEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldDesktopTurnID, v))
+}
+
+// DesktopTurnIDContainsFold applies the ContainsFold predicate on the "desktop_turn_id" field.
+func DesktopTurnIDContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldDesktopTurnID, v))
+}
+
+// DesktopCallIDEQ applies the EQ predicate on the "desktop_call_id" field.
+func DesktopCallIDEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDNEQ applies the NEQ predicate on the "desktop_call_id" field.
+func DesktopCallIDNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDIn applies the In predicate on the "desktop_call_id" field.
+func DesktopCallIDIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldDesktopCallID, vs...))
+}
+
+// DesktopCallIDNotIn applies the NotIn predicate on the "desktop_call_id" field.
+func DesktopCallIDNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldDesktopCallID, vs...))
+}
+
+// DesktopCallIDGT applies the GT predicate on the "desktop_call_id" field.
+func DesktopCallIDGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDGTE applies the GTE predicate on the "desktop_call_id" field.
+func DesktopCallIDGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDLT applies the LT predicate on the "desktop_call_id" field.
+func DesktopCallIDLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDLTE applies the LTE predicate on the "desktop_call_id" field.
+func DesktopCallIDLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDContains applies the Contains predicate on the "desktop_call_id" field.
+func DesktopCallIDContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDHasPrefix applies the HasPrefix predicate on the "desktop_call_id" field.
+func DesktopCallIDHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDHasSuffix applies the HasSuffix predicate on the "desktop_call_id" field.
+func DesktopCallIDHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDIsNil applies the IsNil predicate on the "desktop_call_id" field.
+func DesktopCallIDIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldDesktopCallID))
+}
+
+// DesktopCallIDNotNil applies the NotNil predicate on the "desktop_call_id" field.
+func DesktopCallIDNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldDesktopCallID))
+}
+
+// DesktopCallIDEqualFold applies the EqualFold predicate on the "desktop_call_id" field.
+func DesktopCallIDEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldDesktopCallID, v))
+}
+
+// DesktopCallIDContainsFold applies the ContainsFold predicate on the "desktop_call_id" field.
+func DesktopCallIDContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldDesktopCallID, v))
+}
+
+// DesktopPurposeEQ applies the EQ predicate on the "desktop_purpose" field.
+func DesktopPurposeEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeNEQ applies the NEQ predicate on the "desktop_purpose" field.
+func DesktopPurposeNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeIn applies the In predicate on the "desktop_purpose" field.
+func DesktopPurposeIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldDesktopPurpose, vs...))
+}
+
+// DesktopPurposeNotIn applies the NotIn predicate on the "desktop_purpose" field.
+func DesktopPurposeNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldDesktopPurpose, vs...))
+}
+
+// DesktopPurposeGT applies the GT predicate on the "desktop_purpose" field.
+func DesktopPurposeGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeGTE applies the GTE predicate on the "desktop_purpose" field.
+func DesktopPurposeGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeLT applies the LT predicate on the "desktop_purpose" field.
+func DesktopPurposeLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeLTE applies the LTE predicate on the "desktop_purpose" field.
+func DesktopPurposeLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeContains applies the Contains predicate on the "desktop_purpose" field.
+func DesktopPurposeContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeHasPrefix applies the HasPrefix predicate on the "desktop_purpose" field.
+func DesktopPurposeHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeHasSuffix applies the HasSuffix predicate on the "desktop_purpose" field.
+func DesktopPurposeHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeIsNil applies the IsNil predicate on the "desktop_purpose" field.
+func DesktopPurposeIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldDesktopPurpose))
+}
+
+// DesktopPurposeNotNil applies the NotNil predicate on the "desktop_purpose" field.
+func DesktopPurposeNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldDesktopPurpose))
+}
+
+// DesktopPurposeEqualFold applies the EqualFold predicate on the "desktop_purpose" field.
+func DesktopPurposeEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldDesktopPurpose, v))
+}
+
+// DesktopPurposeContainsFold applies the ContainsFold predicate on the "desktop_purpose" field.
+func DesktopPurposeContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldDesktopPurpose, v))
+}
+
+// SettlementStatusEQ applies the EQ predicate on the "settlement_status" field.
+func SettlementStatusEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldSettlementStatus, v))
+}
+
+// SettlementStatusNEQ applies the NEQ predicate on the "settlement_status" field.
+func SettlementStatusNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldSettlementStatus, v))
+}
+
+// SettlementStatusIn applies the In predicate on the "settlement_status" field.
+func SettlementStatusIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldSettlementStatus, vs...))
+}
+
+// SettlementStatusNotIn applies the NotIn predicate on the "settlement_status" field.
+func SettlementStatusNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldSettlementStatus, vs...))
+}
+
+// SettlementStatusGT applies the GT predicate on the "settlement_status" field.
+func SettlementStatusGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldSettlementStatus, v))
+}
+
+// SettlementStatusGTE applies the GTE predicate on the "settlement_status" field.
+func SettlementStatusGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldSettlementStatus, v))
+}
+
+// SettlementStatusLT applies the LT predicate on the "settlement_status" field.
+func SettlementStatusLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldSettlementStatus, v))
+}
+
+// SettlementStatusLTE applies the LTE predicate on the "settlement_status" field.
+func SettlementStatusLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldSettlementStatus, v))
+}
+
+// SettlementStatusContains applies the Contains predicate on the "settlement_status" field.
+func SettlementStatusContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldSettlementStatus, v))
+}
+
+// SettlementStatusHasPrefix applies the HasPrefix predicate on the "settlement_status" field.
+func SettlementStatusHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldSettlementStatus, v))
+}
+
+// SettlementStatusHasSuffix applies the HasSuffix predicate on the "settlement_status" field.
+func SettlementStatusHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldSettlementStatus, v))
+}
+
+// SettlementStatusIsNil applies the IsNil predicate on the "settlement_status" field.
+func SettlementStatusIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldSettlementStatus))
+}
+
+// SettlementStatusNotNil applies the NotNil predicate on the "settlement_status" field.
+func SettlementStatusNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldSettlementStatus))
+}
+
+// SettlementStatusEqualFold applies the EqualFold predicate on the "settlement_status" field.
+func SettlementStatusEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldSettlementStatus, v))
+}
+
+// SettlementStatusContainsFold applies the ContainsFold predicate on the "settlement_status" field.
+func SettlementStatusContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldSettlementStatus, v))
 }
 
 // GroupIDEQ applies the EQ predicate on the "group_id" field.

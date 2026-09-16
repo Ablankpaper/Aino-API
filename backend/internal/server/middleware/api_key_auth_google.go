@@ -81,6 +81,8 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			abortWithGoogleError(c, http.StatusForbidden, "Desktop authorization does not support this endpoint")
 			return
 		}
+		// Ordinary keys must not forward the private desktop attribution namespace.
+		apiKey, _ = bindDesktopUsage(c, apiKey)
 
 		// 同 api_key_auth.go：早退中断前也写入 Ops 回退 key，便于错误日志展示
 		// user/group/platform。

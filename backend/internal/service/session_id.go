@@ -44,6 +44,9 @@ func ExtractClientSessionID(c *gin.Context) string {
 	if c == nil || c.Request == nil {
 		return ""
 	}
+	if usage, ok := c.Request.Context().Value(desktopUsageContextKey{}).(*DesktopUsage); ok {
+		return usage.SessionID
+	}
 	for _, header := range clientSessionIDHeaders {
 		if sessionID := sanitizeSessionID(c.GetHeader(header)); sessionID != "" {
 			return sessionID
