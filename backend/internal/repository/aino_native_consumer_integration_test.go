@@ -52,7 +52,8 @@ func TestAinoNativeConsumer(t *testing.T) {
 	fixturePath := filepath.Join(dir, "fixture-read.txt")
 	content := "fixture-file-content-" + r.runID
 	require.NoError(t, os.WriteFile(fixturePath, []byte(content+"\n"), 0600))
-	protocol := &ainoNativeProtocol{rig: r, path: fixturePath, content: content}
+	protocol := &ainoNativeProtocol{rig: r, path: fixturePath, content: content, shutdown: make(chan struct{})}
+	t.Cleanup(protocol.closeActiveStream)
 	r.modelProvider = protocol
 	r.wireModel(t, 0)
 	r.wirePayment(t)
@@ -107,7 +108,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 					return
 				}
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": userID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "tool_results": protocol.toolResults.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load()})
+			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": userID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "tool_results": protocol.toolResults.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load(), "stream_shutdowns": protocol.streamShutdowns.Load()})
 		case "/fixture/control/pay":
 			if req.Method != "POST" || userID == 0 {
 				http.Error(w, "invalid control request", 400)
@@ -151,6 +152,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 				http.Error(w, "method", http.StatusMethodNotAllowed)
 				return
 			}
+			protocol.closeActiveStream()
 			finish.Do(func() { close(completed) })
 			_, _ = io.WriteString(w, `{"completed":true}`)
 		default:

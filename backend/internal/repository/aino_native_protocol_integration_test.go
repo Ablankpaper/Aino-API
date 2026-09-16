@@ -5,10 +5,16 @@ package repository_test
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // Protocol-only provider: a real Agent must choose/execute read_file, and the
@@ -16,7 +22,14 @@ import (
 type ainoNativeProtocol struct {
 	rig                                         *ainoPlatformFixture
 	path, content                               string
+	shutdown                                    chan struct{}
+	shutdownOnce                                sync.Once
 	toolResults, streamStarted, streamCancelled atomic.Int64
+	streamShutdowns                             atomic.Int64
+}
+
+func (p *ainoNativeProtocol) closeActiveStream() {
+	p.shutdownOnce.Do(func() { close(p.shutdown) })
 }
 
 func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -145,10 +158,40 @@ func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		case <-req.Context().Done():
 			p.streamCancelled.Add(1)
 			return
+		case <-p.shutdown:
+			p.streamShutdowns.Add(1)
+			return
 		case <-time.After(25 * time.Second):
 		}
 	}
 	emit(map[string]any{}, finish, usage)
 	_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 	flusher.Flush()
+}
+
+func TestAinoNativeProtocolShutdownDoesNotCountAsCancellation(t *testing.T) {
+	protocol := &ainoNativeProtocol{
+		rig:      &ainoPlatformFixture{runID: "native-shutdown-test"},
+		path:     "/tmp/native-shutdown-test.txt",
+		content:  "native-shutdown-test-content",
+		shutdown: make(chan struct{}),
+	}
+	server := httptest.NewServer(protocol)
+	defer server.Close()
+	body := `{"model":"fixture-tool-model","stream":true,"messages":[{"role":"user","content":"fixture-cancel-stream"}],"tools":[{"function":{"name":"read_file","parameters":{"properties":{"path":{}}}}}]}`
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(body))
+	require.NoError(t, err)
+	request.Header.Set("Authorization", "Bearer fixture-upstream-key")
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Eventually(t, func() bool { return protocol.streamStarted.Load() == 1 }, time.Second, 10*time.Millisecond)
+
+	protocol.closeActiveStream()
+	_, err = io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, protocol.streamCancelled.Load())
+	require.EqualValues(t, 1, protocol.streamShutdowns.Load())
 }
