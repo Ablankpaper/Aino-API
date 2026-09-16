@@ -2517,7 +2517,7 @@ func TestLogin2FADebugLogsRedactTemporaryTokenAndSessionEmail(t *testing.T) {
 	for _, tempToken := range []string{invalidToken, validToken} {
 		recorder := httptest.NewRecorder()
 		ginCtx, _ := gin.CreateTestContext(recorder)
-		body := bytes.NewBufferString(`{"temp_token":"` + tempToken + `","totp_code":"000000"}`)
+		body := bytes.NewBufferString(`{"temp_token":"` + tempToken + `","totp_code":"xxxxxx"}`)
 		ginCtx.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/login/2fa", body)
 		ginCtx.Request.Header.Set("Content-Type", "application/json")
 
