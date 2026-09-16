@@ -13,6 +13,7 @@ type DesktopHandler struct {
 	totp        *service.TotpService
 	models      *service.DesktopModelService
 	credentials *service.DesktopCredentialService
+	billing     *service.DesktopBillingService
 }
 
 func NewDesktopHandler(models *service.DesktopModelService) *DesktopHandler {
@@ -23,10 +24,11 @@ func (h *DesktopHandler) SetCredentialService(credentials *service.DesktopCreden
 	h.credentials = credentials
 }
 
-func ProvideDesktopHandler(models *service.DesktopModelService, credentials *service.DesktopCredentialService, users *service.UserService, totp *service.TotpService) *DesktopHandler {
+func ProvideDesktopHandler(models *service.DesktopModelService, credentials *service.DesktopCredentialService, users *service.UserService, totp *service.TotpService, billing *service.DesktopBillingService) *DesktopHandler {
 	h := NewDesktopHandler(models)
 	h.SetCredentialService(credentials)
 	h.SetCredentialSecurity(users, totp)
+	h.SetBillingService(billing)
 	return h
 }
 

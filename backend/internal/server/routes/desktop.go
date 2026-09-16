@@ -22,6 +22,7 @@ func RegisterDesktopRoutes(
 	{
 		desktop.GET("/bootstrap", h.Desktop.GetBootstrap)
 		desktop.GET("/models", h.Desktop.ListModels)
+		desktop.GET("/billing-summary", h.Desktop.BillingSummary)
 		desktop.POST("/credentials", h.Desktop.ProvisionCredential)
 		desktop.GET("/devices", h.Desktop.ListDevices)
 		desktop.DELETE("/devices/:device_id", h.Desktop.RevokeDevice)
