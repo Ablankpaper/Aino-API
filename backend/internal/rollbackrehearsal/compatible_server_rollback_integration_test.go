@@ -108,6 +108,7 @@ type rehearsalReceipt struct {
 	Processes          []*processReceipt            `json:"processes"`
 	Phases             []phaseProof                 `json:"phases"`
 	Snapshots          map[string]dataSnapshot      `json:"snapshots"`
+	RetainedPayment    retainedPaymentProof         `json:"retained_payment"`
 	Notes              []string                     `json:"notes"`
 }
 
@@ -150,7 +151,7 @@ func TestCompatibleOldServerRollbackRehearsal(t *testing.T) {
 			"All exercised HTTP destinations were asserted loopback.",
 			"Server child processes inherited no caller environment; HTTP(S)/ALL proxy variables point to a closed loopback port, NO_PROXY permits only owned loopback services, and pricing.remote_url is blank. A transport that deliberately ignores proxy variables is outside this process-level block.",
 			"SMS was globally disabled before the old binary; the old binary does not implement the newer phone rollout allowlist.",
-			"No signed payment callback was exercised; retained order reads and disabled new checkout were verified.",
+			"A synthetic pending EasyPay order was signed and fulfilled through the compatible-old binary while payment_enabled=false; no external provider was contacted.",
 		},
 	}
 	defer func() {
@@ -189,11 +190,14 @@ func TestCompatibleOldServerRollbackRehearsal(t *testing.T) {
 	waitForReady(t, baseURL, latestFirst)
 
 	ids, ordinaryKey, managedKey, password := seedFixture(t, db)
+	retainedPayment := seedRetainedPaymentFixture(t, db, baseURL)
+	receipt.RetainedPayment = newRetainedPaymentProof(retainedPayment)
 	latestToken := login(t, baseURL, fixtureEmail(ids.UserID), password)
 	session := tokenSessionIdentity(t, latestToken)
 	seedManagedCredential(t, db, &ids, session)
 	receipt.Phases = append(receipt.Phases, verifyPhase(t, "latest-before-halt", baseURL, latestToken, ids, ordinaryKey, managedKey, true, false))
 	receipt.Snapshots["latest-before-rollback"] = snapshot(t, db, ids)
+	receipt.RetainedPayment.BeforeRollback = retainedPaymentSnapshotState(t, db, retainedPayment)
 	receipt.MigrationChecksums["latest-before-rollback"] = migrationChecksums(t, db)
 	setDesktopEnabled(t, db, false)
 	receipt.Phases = append(receipt.Phases, verifyPhase(t, "latest-pre-downgrade-halt", baseURL, latestToken, ids, ordinaryKey, managedKey, false, true))
@@ -206,6 +210,7 @@ func TestCompatibleOldServerRollbackRehearsal(t *testing.T) {
 	require.Equal(t, receipt.MigrationChecksums["latest-before-rollback"], migrationChecksums(t, db), "old startup must not mutate migration ledger checksums")
 	oldToken := login(t, baseURL, fixtureEmail(ids.UserID), password)
 	receipt.Phases = append(receipt.Phases, verifyPhase(t, "compatible-old-before-revocation", baseURL, oldToken, ids, ordinaryKey, managedKey, false, true))
+	exerciseRetainedPaymentCallback(t, db, baseURL, retainedPayment, &receipt.RetainedPayment)
 	revokeDevice(t, baseURL, oldToken)
 	receipt.Phases = append(receipt.Phases, verifyPhase(t, "compatible-old-after-revocation", baseURL, oldToken, ids, ordinaryKey, managedKey, false, true))
 	receipt.Snapshots["compatible-old"] = snapshot(t, db, ids)
@@ -218,6 +223,7 @@ func TestCompatibleOldServerRollbackRehearsal(t *testing.T) {
 	waitForReady(t, baseURL, latestRestore)
 	restoreToken := login(t, baseURL, fixtureEmail(ids.UserID), password)
 	receipt.Phases = append(receipt.Phases, verifyPhase(t, "latest-restored", baseURL, restoreToken, ids, ordinaryKey, managedKey, false, true))
+	verifyRetainedPaymentAfterRestore(t, db, baseURL, retainedPayment, &receipt.RetainedPayment)
 	receipt.Snapshots["latest-restored"] = snapshot(t, db, ids)
 	receipt.MigrationChecksums["latest-restored"] = migrationChecksums(t, db)
 	latestRestore.stop(t)
