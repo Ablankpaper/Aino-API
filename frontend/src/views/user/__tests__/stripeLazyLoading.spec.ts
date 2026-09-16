@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { manualChunks } from '../../../../tooling/manualChunks'
+
 const frontendRoot = resolve(__dirname, '../../../..')
 const stripeConsumers = [
   'src/views/user/StripePaymentView.vue',
@@ -22,12 +24,12 @@ describe('Stripe lazy-loading contract', () => {
   })
 
   it('keeps Stripe out of the shared vendor chunk', () => {
-    const viteConfig = readFrontendFile('vite.config.ts')
-    const stripeRule = viteConfig.indexOf("id.includes('/@stripe/stripe-js/')")
-    const miscFallback = viteConfig.indexOf("return 'vendor-misc'")
+    const pureLoader = manualChunks('/fixture/node_modules/@stripe/stripe-js/dist/pure.mjs')
+    const stripeEntry = manualChunks('/fixture/node_modules/@stripe/stripe-js/dist/index.mjs')
+    const unrelatedVendor = manualChunks('/fixture/node_modules/axios/index.js')
 
-    expect(stripeRule).toBeGreaterThan(-1)
-    expect(viteConfig.slice(stripeRule, miscFallback)).toContain("return 'vendor-stripe'")
-    expect(stripeRule).toBeLessThan(miscFallback)
+    expect(pureLoader).toBeDefined()
+    expect(stripeEntry).toBe(pureLoader)
+    expect(pureLoader).not.toBe(unrelatedVendor)
   })
 })
