@@ -51,7 +51,7 @@ func NewAliyunSMSSenderWithOptions(accessKeyID, accessKeySecret, regionID string
 	accessKeySecret = strings.TrimSpace(accessKeySecret)
 	regionID = strings.TrimSpace(regionID)
 	if accessKeyID == "" || accessKeySecret == "" || regionID == "" {
-		return nil, fmt.Errorf("Aliyun SMS credentials and region are required")
+		return nil, fmt.Errorf("aliyun SMS credentials and region are required")
 	}
 	if timeout <= 0 {
 		timeout = defaultAliyunSMSRequestTimeout
@@ -87,12 +87,15 @@ func newAliyunSMSSenderWithClient(client *dysmsapi.Client, timeout time.Duration
 
 // Send sends an SMS message via Aliyun
 func (s *AliyunSMSSender) Send(ctx context.Context, message SMSMessage) (SMSSendResult, error) {
+	if s == nil {
+		return SMSSendResult{}, fmt.Errorf("aliyun SMS client is not configured")
+	}
 	return s.sendWithClient(ctx, message, s.client, s.timeout)
 }
 
 func (s *AliyunSMSSender) SendWithOptions(ctx context.Context, message SMSMessage, options SMSDeliveryOptions) (SMSSendResult, error) {
 	if s == nil {
-		return SMSSendResult{}, fmt.Errorf("Aliyun SMS client is not configured")
+		return SMSSendResult{}, fmt.Errorf("aliyun SMS client is not configured")
 	}
 	regionID := strings.TrimSpace(options.RegionID)
 	if regionID == "" {
@@ -115,7 +118,7 @@ func (s *AliyunSMSSender) SendWithOptions(ctx context.Context, message SMSMessag
 
 func (s *AliyunSMSSender) sendWithClient(ctx context.Context, message SMSMessage, client *dysmsapi.Client, timeout time.Duration) (SMSSendResult, error) {
 	if client == nil {
-		return SMSSendResult{}, fmt.Errorf("Aliyun SMS client is not configured")
+		return SMSSendResult{}, fmt.Errorf("aliyun SMS client is not configured")
 	}
 	if err := ctx.Err(); err != nil {
 		return SMSSendResult{}, err
@@ -125,7 +128,7 @@ func (s *AliyunSMSSender) sendWithClient(ctx context.Context, message SMSMessage
 		return SMSSendResult{}, ErrPhoneInvalid
 	}
 	if strings.TrimSpace(message.SignName) == "" || strings.TrimSpace(message.TemplateCode) == "" {
-		return SMSSendResult{}, fmt.Errorf("Aliyun SMS sign name and template code are required")
+		return SMSSendResult{}, fmt.Errorf("aliyun SMS sign name and template code are required")
 	}
 	request := new(dysmsapi.SendSmsRequest).
 		SetPhoneNumbers(strings.TrimPrefix(normalizedPhone, "+86")).
@@ -164,7 +167,7 @@ func (s *AliyunSMSSender) sendWithClient(ctx context.Context, message SMSMessage
 	}
 
 	if result.Code != "OK" {
-		return result, fmt.Errorf("SMS provider rejected request: code=%s", result.Code)
+		return result, fmt.Errorf("sms provider rejected request: code=%s", result.Code)
 	}
 
 	return result, nil

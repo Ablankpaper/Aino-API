@@ -31,6 +31,14 @@ func newAliyunSMSBoundarySender(t *testing.T, handler http.Handler, timeout time
 	return newAliyunSMSSenderWithClient(client, timeout), server
 }
 
+func TestAliyunSMSSenderSendRejectsNilReceiver(t *testing.T) {
+	var sender *AliyunSMSSender
+
+	_, err := sender.Send(context.Background(), SMSMessage{})
+
+	require.EqualError(t, err, "aliyun SMS client is not configured")
+}
+
 func TestAliyunSMSSenderUsesDomesticNumberAndExactTemplateParams(t *testing.T) {
 	requests := make(chan url.Values, 1)
 	sender, server := newAliyunSMSBoundarySender(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

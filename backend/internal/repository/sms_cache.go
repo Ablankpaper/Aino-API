@@ -320,7 +320,7 @@ func (c *SMSCache) VerifyAndConsumeChallenge(
 	if err != nil {
 		return service.SMSChallengeConsumeResult{}, fmt.Errorf("verify challenge: %w", err)
 	}
-	items, ok := result.([]interface{})
+	items, ok := result.([]any)
 	if !ok || len(items) == 0 {
 		return service.SMSChallengeConsumeResult{}, fmt.Errorf("unexpected verify result")
 	}
@@ -421,7 +421,7 @@ func (c *SMSCache) retryAfter(ctx context.Context, key string) (int64, error) {
 	return maxInt64(1, int64(math.Ceil(ttl.Seconds()))), nil
 }
 
-func redisResultString(value interface{}) (string, bool) {
+func redisResultString(value any) (string, bool) {
 	switch v := value.(type) {
 	case string:
 		return v, true
@@ -432,7 +432,7 @@ func redisResultString(value interface{}) (string, bool) {
 	}
 }
 
-func stringValue(value interface{}) string {
+func stringValue(value any) string {
 	if s, ok := redisResultString(value); ok {
 		return s
 	}

@@ -237,7 +237,7 @@ func (s *AuthService) createPhoneUser(
 		SetProviderType("phone").
 		SetProviderKey("default").
 		SetProviderSubject(normalizedPhone).
-		SetMetadata(map[string]interface{}{}).
+		SetMetadata(map[string]any{}).
 		SetVerifiedAt(now).
 		SetCreatedAt(now).
 		SetUpdatedAt(now).

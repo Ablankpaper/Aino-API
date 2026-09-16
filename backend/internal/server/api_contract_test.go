@@ -51,6 +51,7 @@ func TestAPIContracts(t *testing.T) {
 					"id": 1,
 					"email": "alice@example.com",
 					"email_bound": true,
+					"phone_bound": false,
 					"username": "alice",
 						"role": "user",
 						"balance": 12.5,
@@ -99,6 +100,14 @@ func TestAPIContracts(t *testing.T) {
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/oidc/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
 						},
+						"phone": {
+							"provider": "phone",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false,
+							"bind_start_path": "/settings/profile?bind=phone"
+						},
 						"wechat": {
 							"provider": "wechat",
 							"bound": false,
@@ -144,6 +153,14 @@ func TestAPIContracts(t *testing.T) {
 							"can_bind": true,
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/oidc/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+						},
+						"phone": {
+							"provider": "phone",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false,
+							"bind_start_path": "/settings/profile?bind=phone"
 						},
 						"wechat": {
 							"provider": "wechat",
@@ -191,6 +208,14 @@ func TestAPIContracts(t *testing.T) {
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/oidc/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
 						},
+						"phone": {
+							"provider": "phone",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false,
+							"bind_start_path": "/settings/profile?bind=phone"
+						},
 						"wechat": {
 							"provider": "wechat",
 							"bound": false,
@@ -236,6 +261,7 @@ func TestAPIContracts(t *testing.T) {
 					"last_used_at": null,
 					"last_used_ip": null,
 					"current_concurrency": 0,
+					"desktop_managed": false,
 					"quota": 0,
 					"quota_used": 0,
 					"rate_limit_5h": 0,
@@ -287,6 +313,7 @@ func TestAPIContracts(t *testing.T) {
 							"last_used_at": null,
 							"last_used_ip": null,
 							"current_concurrency": 0,
+							"desktop_managed": false,
 							"quota": 0,
 							"quota_used": 0,
 							"rate_limit_5h": 0,
@@ -607,6 +634,12 @@ func TestAPIContracts(t *testing.T) {
 							"cache_read_cost": 0,
 						"total_cost": 0.5,
 						"actual_cost": 0.5,
+						"actual_cost_decimal": null,
+						"currency": "USD",
+						"desktop_turn_id": null,
+						"desktop_call_id": null,
+						"desktop_purpose": null,
+						"settlement_status": "unknown",
 						"rate_multiplier": 1,
 						"long_context_billing_applied": false,
 						"billing_type": 0,
@@ -714,6 +747,39 @@ func TestAPIContracts(t *testing.T) {
 				"code": 0,
 				"message": "success",
 				"data": {
+					"sms": {
+						"enabled": false,
+						"provider": "aliyun",
+						"region_id": "cn-hangzhou",
+						"request_timeout_seconds": 5,
+						"sign_name": "",
+						"template_code": "",
+						"template_params": {"code":"code","ttl":"ttl_minutes"},
+						"template_verified": false,
+						"code_length": 6,
+						"ttl_seconds": 300,
+						"cooldown_seconds": 60,
+						"max_attempts": 5,
+						"phone_hour_limit": 5,
+						"phone_day_limit": 10,
+						"ip_hour_limit": 30,
+						"global_day_limit": 1000,
+						"credentials_configured": false,
+						"hmac_configured": false,
+						"ready": false,
+						"reason_code": "SMS_DISABLED"
+					},
+					"desktop": {
+						"enabled": false,
+						"models": [],
+						"default_model_id": null,
+						"credential_ttl_seconds": 3600
+					},
+					"phone_login_enabled": false,
+					"phone_registration_enabled": false,
+					"phone_binding_enabled": false,
+					"phone_regions": null,
+					"phone_code_length": 0,
 					"registration_enabled": true,
 					"email_verify_enabled": false,
 					"registration_email_suffix_whitelist": [],
@@ -1065,6 +1131,39 @@ func TestAPIContracts(t *testing.T) {
 				"code": 0,
 				"message": "success",
 				"data": {
+					"sms": {
+						"enabled": false,
+						"provider": "aliyun",
+						"region_id": "cn-hangzhou",
+						"request_timeout_seconds": 5,
+						"sign_name": "",
+						"template_code": "",
+						"template_params": {"code":"code","ttl":"ttl_minutes"},
+						"template_verified": false,
+						"code_length": 6,
+						"ttl_seconds": 300,
+						"cooldown_seconds": 60,
+						"max_attempts": 5,
+						"phone_hour_limit": 5,
+						"phone_day_limit": 10,
+						"ip_hour_limit": 30,
+						"global_day_limit": 1000,
+						"credentials_configured": false,
+						"hmac_configured": false,
+						"ready": false,
+						"reason_code": "SMS_DISABLED"
+					},
+					"desktop": {
+						"enabled": false,
+						"models": [],
+						"default_model_id": null,
+						"credential_ttl_seconds": 3600
+					},
+					"phone_login_enabled": false,
+					"phone_registration_enabled": false,
+					"phone_binding_enabled": false,
+					"phone_regions": null,
+					"phone_code_length": 0,
 					"registration_enabled": true,
 					"email_verify_enabled": false,
 					"registration_email_suffix_whitelist": [],
@@ -2891,7 +2990,9 @@ func (r *stubSettingRepo) Set(ctx context.Context, key, value string) error {
 func (r *stubSettingRepo) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
 	out := make(map[string]string, len(keys))
 	for _, key := range keys {
-		out[key] = r.all[key]
+		if value, ok := r.all[key]; ok {
+			out[key] = value
+		}
 	}
 	return out, nil
 }

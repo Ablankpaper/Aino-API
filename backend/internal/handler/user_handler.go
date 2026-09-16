@@ -56,20 +56,6 @@ func (h *UserHandler) SetStepUpDependencies(totpService *service.TotpService, se
 	h.settingService = settingService
 }
 
-func (h *UserHandler) enforcePhoneBindingStepUp(c *gin.Context) bool {
-	// Older embedders may construct UserHandler without the optional step-up
-	// dependencies.  The setting is disabled by default in those deployments;
-	// preserve that compatibility while production wiring supplies both deps.
-	if h == nil || h.settingService == nil || !h.settingService.IsStepUpEnabled(c.Request.Context()) {
-		return true
-	}
-	if h.totpService == nil || h.userService == nil {
-		response.InternalError(c, "Step-up verification service not configured")
-		return false
-	}
-	return middleware2.EnforceStepUp(c, h.totpService, h.userService, h.settingService)
-}
-
 // GetMyPlatformQuotas GET /user/platform-quotas
 // 返回当前 JWT 用户的 platform quota 状态。
 // D14: 对每条记录逐档判断窗口过期，过期档位 usage=0、window_resets_at=null（不写 DB）
