@@ -67,6 +67,8 @@ func TestAinoNativeConsumer(t *testing.T) {
 			r.router.Handle(route.Method, target, handlers...)
 		}
 	}
+	authHandler := handler.NewAuthHandler(&config.Config{}, r.auth, r.users, r.settings, nil, nil, nil, nil)
+	r.router.GET("/api/v1/auth/me", gin.HandlerFunc(middleware.NewJWTAuthMiddleware(r.auth, r.users, r.settings, nil)), authHandler.GetCurrentUser)
 	// Real public settings projection with valid synthetic SMS deployment config;
 	// SMS dispatch itself is the existing captured sender, never Aliyun transport.
 	sms := config.SMSConfig{Enabled: true, Provider: "aliyun", AccessKeyID: "fixture-sms-id", AccessKeySecret: "fixture-sms-secret", HMACSecret: strings.Repeat("fixture-hmac", 4), RegionID: "cn-hangzhou", SignName: "fixture-sign", TemplateCode: "SMS_FIXTURE", TemplateParams: map[string]string{"code": "code", "minutes": "ttl_minutes"}, TemplateVerified: true, CodeLength: 6, TTLSeconds: 300, CooldownSeconds: 60, MaxAttempts: 5, PhoneHourLimit: 50, PhoneDayLimit: 50, IPHourLimit: 50, GlobalDayLimit: 1000, RequestTimeoutSeconds: 5}
