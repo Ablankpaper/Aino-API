@@ -5,17 +5,23 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
 type updateServiceCacheStub struct {
-	data string
+	data   string
+	reads  int
+	writes int
 }
 
 func (s *updateServiceCacheStub) GetUpdateInfo(context.Context) (string, error) {
+	s.reads++
 	if s.data == "" {
 		return "", errors.New("cache miss")
 	}
@@ -23,6 +29,7 @@ func (s *updateServiceCacheStub) GetUpdateInfo(context.Context) (string, error) 
 }
 
 func (s *updateServiceCacheStub) SetUpdateInfo(_ context.Context, data string, _ time.Duration) error {
+	s.writes++
 	s.data = data
 	return nil
 }
@@ -31,13 +38,17 @@ type updateServiceGitHubClientStub struct {
 	release        *GitHubRelease
 	recentReleases []*GitHubRelease
 	recentErr      error
+	latestCalls    int
+	recentCalls    int
 }
 
 func (s *updateServiceGitHubClientStub) FetchLatestRelease(context.Context, string) (*GitHubRelease, error) {
+	s.latestCalls++
 	return s.release, nil
 }
 
 func (s *updateServiceGitHubClientStub) FetchRecentReleases(context.Context, string, int) ([]*GitHubRelease, error) {
+	s.recentCalls++
 	return s.recentReleases, s.recentErr
 }
 
@@ -184,4 +195,69 @@ func TestUpdateServiceRollbackToVersionAcceptsVPrefix(t *testing.T) {
 	require.Error(t, err)
 	require.NotErrorIs(t, err, ErrRollbackVersionNotAllowed)
 	require.Contains(t, err.Error(), "no compatible release found")
+}
+
+func TestUpdateServiceManualCheckIgnoresUpstreamAndCache(t *testing.T) {
+	for _, force := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force=%t", force), func(t *testing.T) {
+			cache := &updateServiceCacheStub{data: fmt.Sprintf(`{"latest":"9.9.9","timestamp":%d}`, time.Now().Unix())}
+			github := &updateServiceGitHubClientStub{release: &GitHubRelease{TagName: "v9.9.9"}}
+			svc := NewUpdateService(cache, github, "0.2.5-aino", "manual")
+
+			info, err := svc.CheckUpdate(context.Background(), force)
+
+			require.NoError(t, err)
+			require.Equal(t, &UpdateInfo{
+				CurrentVersion: "0.2.5-aino",
+				LatestVersion:  "0.2.5-aino",
+				BuildType:      "manual",
+			}, info)
+			require.Zero(t, github.latestCalls, "manual checks must not contact upstream")
+			require.Zero(t, cache.reads, "upstream cache must not influence manual builds")
+			require.Zero(t, cache.writes)
+		})
+	}
+}
+
+func TestUpdateServiceManualRejectsBinaryChanges(t *testing.T) {
+	for _, operation := range []string{"update", "rollback", "rollback-version", "rollback-empty-version"} {
+		t.Run(operation, func(t *testing.T) {
+			cache := &updateServiceCacheStub{}
+			github := &updateServiceGitHubClientStub{
+				release:        &GitHubRelease{TagName: "v9.9.9"},
+				recentReleases: []*GitHubRelease{{TagName: "v0.2.4"}},
+			}
+			svc := NewUpdateService(cache, github, "0.2.5", "manual")
+			var err error
+			switch operation {
+			case "update":
+				err = svc.PerformUpdate(context.Background())
+			case "rollback":
+				err = svc.Rollback()
+			case "rollback-version":
+				err = svc.RollbackToVersion(context.Background(), "0.2.4")
+			case "rollback-empty-version":
+				err = svc.RollbackToVersion(context.Background(), "")
+			}
+
+			require.Error(t, err)
+			require.Equal(t, http.StatusForbidden, infraerrors.Code(err))
+			require.Equal(t, "UPDATE_DISABLED_MANUAL_BUILD", infraerrors.Reason(err))
+			require.Zero(t, github.latestCalls)
+			require.Zero(t, github.recentCalls)
+			require.Zero(t, cache.reads)
+			require.Zero(t, cache.writes)
+		})
+	}
+}
+
+func TestUpdateServiceManualListsNoRollbackCandidates(t *testing.T) {
+	github := &updateServiceGitHubClientStub{recentReleases: []*GitHubRelease{{TagName: "v0.2.4"}}}
+	svc := NewUpdateService(&updateServiceCacheStub{}, github, "0.2.5", "manual")
+
+	versions, err := svc.ListRollbackVersions(context.Background())
+
+	require.NoError(t, err)
+	require.Equal(t, []RollbackVersion{}, versions)
+	require.Zero(t, github.recentCalls, "manual builds must not fetch upstream rollback candidates")
 }

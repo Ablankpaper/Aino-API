@@ -4,15 +4,19 @@
     <template v-if="isAdmin">
       <button
         @click="toggleDropdown"
-        class="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors"
+        class="flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors"
         :class="[
           hasUpdate
             ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-800 dark:text-dark-400 dark:hover:bg-dark-700'
         ]"
-        :title="hasUpdate ? t('version.updateAvailable') : t('version.upToDate')"
+        :title="
+          isManualBuild
+            ? t('version.manualBuild')
+            : hasUpdate ? t('version.updateAvailable') : t('version.upToDate')
+        "
       >
-        <span v-if="currentVersion" class="font-medium">v{{ currentVersion }}</span>
+        <span v-if="currentVersion" class="min-w-0 truncate font-medium">v{{ currentVersion }}</span>
         <span
           v-else
           class="h-3 w-12 animate-pulse rounded bg-gray-200 font-medium dark:bg-dark-600"
@@ -80,16 +84,17 @@
             <template v-else>
               <!-- Version display - centered and prominent -->
               <div class="mb-4 text-center">
-                <div class="inline-flex items-center gap-2">
+                <div class="inline-flex max-w-full items-center gap-2">
                   <span
                     v-if="currentVersion"
-                    class="text-2xl font-bold text-gray-900 dark:text-white"
+                    class="min-w-0 break-words font-bold text-gray-900 [overflow-wrap:anywhere] dark:text-white"
+                    :class="isManualBuild ? 'text-base' : 'text-2xl'"
                     >v{{ currentVersion }}</span
                   >
                   <span v-else class="text-2xl font-bold text-gray-400 dark:text-dark-500">--</span>
                   <!-- Show check mark when up to date -->
                   <span
-                    v-if="!hasUpdate"
+                    v-if="!hasUpdate && !isManualBuild"
                     class="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
                   >
                     <svg
@@ -107,15 +112,17 @@
                 </div>
                 <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
                   {{
-                    hasUpdate
-                      ? t('version.latestVersion') + ': v' + latestVersion
-                      : t('version.upToDate')
+                    isManualBuild
+                      ? t('version.manualBuild')
+                      : hasUpdate
+                        ? t('version.latestVersion') + ': v' + latestVersion
+                        : t('version.upToDate')
                   }}
                 </p>
               </div>
 
               <!-- Priority 1: Update error (must check before hasUpdate) -->
-              <div v-if="updateError" class="space-y-2">
+              <div v-if="updateError && !isManualBuild" class="space-y-2">
                 <div
                   class="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800/50 dark:bg-red-900/20"
                 >
@@ -150,7 +157,7 @@
               </div>
 
               <!-- Priority 2: Update success - need restart -->
-              <div v-else-if="updateSuccess && needRestart" class="space-y-2">
+              <div v-else-if="updateSuccess && needRestart && !isManualBuild" class="space-y-2">
                 <div
                   class="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800/50 dark:bg-green-900/20"
                 >
@@ -356,7 +363,7 @@
               </div>
 
               <!-- Priority 5: Up to date - GitHub link + version rollback -->
-              <div v-else class="space-y-2">
+              <div v-else-if="!isManualBuild" class="space-y-2">
                 <a
                   v-if="releaseInfo?.html_url && releaseInfo.html_url !== '#'"
                   :href="releaseInfo.html_url"
@@ -673,9 +680,10 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const loading = computed(() => appStore.versionLoading)
 const currentVersion = computed(() => appStore.currentVersion || props.version || '')
 const latestVersion = computed(() => appStore.latestVersion)
-const hasUpdate = computed(() => appStore.hasUpdate)
-const releaseInfo = computed(() => appStore.releaseInfo)
 const buildType = computed(() => appStore.buildType)
+const isManualBuild = computed(() => buildType.value === 'manual')
+const hasUpdate = computed(() => !isManualBuild.value && appStore.hasUpdate)
+const releaseInfo = computed(() => appStore.releaseInfo)
 
 // Update process states (local to this component)
 const updating = ref(false)
@@ -752,7 +760,7 @@ async function refreshVersion(force = true) {
 }
 
 async function handleUpdate() {
-  if (updating.value) return
+  if (updating.value || isManualBuild.value) return
 
   updating.value = true
   updateError.value = ''
@@ -783,7 +791,7 @@ function resetRollbackState() {
 }
 
 async function toggleRollbackPanel() {
-  if (!isAdmin.value) return
+  if (!isAdmin.value || isManualBuild.value) return
   rollbackPanelOpen.value = !rollbackPanelOpen.value
   // Source builds only show a hint, no version list to fetch
   if (
@@ -797,7 +805,7 @@ async function toggleRollbackPanel() {
 }
 
 async function loadRollbackVersions() {
-  if (!isAdmin.value) return
+  if (!isAdmin.value || isManualBuild.value) return
   rollbackVersionsLoading.value = true
   rollbackVersionsError.value = ''
   try {
@@ -826,7 +834,7 @@ function formatPublishedAt(publishedAt: string): string {
 }
 
 async function handleRollback() {
-  if (!isAdmin.value) return
+  if (!isAdmin.value || isManualBuild.value) return
   if (rollingBack.value || !selectedRollbackVersion.value) return
 
   rollingBack.value = true

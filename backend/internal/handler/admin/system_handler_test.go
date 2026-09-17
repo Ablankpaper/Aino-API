@@ -36,6 +36,10 @@ type systemHandlerUpdateServiceStub struct {
 	rollbackVersionsCall  int
 }
 
+func (s *systemHandlerUpdateServiceStub) CheckBinaryUpdateAllowed() error {
+	return nil
+}
+
 func (s *systemHandlerUpdateServiceStub) CheckUpdate(_ context.Context, force bool) (*service.UpdateInfo, error) {
 	s.checkForces = append(s.checkForces, force)
 	return s.updateInfo, s.checkErr
@@ -321,4 +325,58 @@ func TestSystemHandlerGetRollbackVersionsError(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestSystemHandlerManualBuildRejectsBeforeOperationStores(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, storesAvailable := range []bool{false, true} {
+		for _, request := range []struct {
+			name string
+			path string
+			body string
+		}{
+			{name: "update", path: "/api/v1/admin/system/update"},
+			{name: "local rollback", path: "/api/v1/admin/system/rollback"},
+			{name: "version rollback", path: "/api/v1/admin/system/rollback", body: `{"version":"0.2.4"}`},
+		} {
+			storeState := "stores unavailable/"
+			if storesAvailable {
+				storeState = "stores available/"
+			}
+			t.Run(storeState+request.name, func(t *testing.T) {
+				previous := service.DefaultIdempotencyCoordinator()
+				service.SetDefaultIdempotencyCoordinator(nil)
+				t.Cleanup(func() { service.SetDefaultIdempotencyCoordinator(previous) })
+				repo := newMemoryIdempotencyRepoStub()
+				var lockSvc *service.SystemOperationLockService
+				if storesAvailable {
+					cfg := service.DefaultIdempotencyConfig()
+					service.SetDefaultIdempotencyCoordinator(service.NewIdempotencyCoordinator(repo, cfg))
+					lockSvc = service.NewSystemOperationLockService(repo, cfg)
+				}
+				handler := NewSystemHandler(service.NewUpdateService(nil, nil, "0.2.5", "manual"), lockSvc)
+				router := gin.New()
+				router.POST("/api/v1/admin/system/update", handler.PerformUpdate)
+				router.POST("/api/v1/admin/system/rollback", handler.Rollback)
+				req := httptest.NewRequest(http.MethodPost, request.path, strings.NewReader(request.body))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Idempotency-Key", "manual-build-operation")
+				rec := httptest.NewRecorder()
+
+				router.ServeHTTP(rec, req)
+
+				require.Equal(t, http.StatusForbidden, rec.Code)
+				var body struct {
+					Code   int    `json:"code"`
+					Reason string `json:"reason"`
+				}
+				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+				require.Equal(t, http.StatusForbidden, body.Code)
+				require.Equal(t, "UPDATE_DISABLED_MANUAL_BUILD", body.Reason)
+				repo.mu.Lock()
+				defer repo.mu.Unlock()
+				require.Empty(t, repo.data, "manual update policy must reject before idempotency or lock writes")
+			})
+		}
+	}
 }

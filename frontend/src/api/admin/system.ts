@@ -18,7 +18,7 @@ export interface VersionInfo {
   release_info?: ReleaseInfo
   cached: boolean
   warning?: string
-  build_type: string // "source" for manual builds, "release" for CI builds
+  build_type: string // "source", "release" (CI), or "manual" (independently deployed fork)
 }
 
 /**

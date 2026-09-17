@@ -34,7 +34,7 @@ var (
 	Version   = ""
 	Commit    = "unknown"
 	Date      = "unknown"
-	BuildType = "source" // "source" for manual builds, "release" for CI builds (set by ldflags)
+	BuildType = "source" // "source" for local builds; CI uses "release", independent deployments use "manual" (ldflags)
 )
 
 func init() {

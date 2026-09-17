@@ -2,6 +2,25 @@
 
 This directory contains files for deploying Sub2API on Linux servers and Apple-silicon Macs.
 
+## Aino API Manual Releases
+
+Aino API is maintained independently. Fetch and merge upstream tags only after
+review; do not replace the fork with upstream release binaries or images.
+
+Production binaries must be built with `-X main.BuildType=manual` in the Go
+linker flags, alongside the fork version and source commit. This mode disables
+upstream update checks, binary replacement, and both local and downloaded
+rollback paths. The admin UI displays a manually deployed build instead of an
+upstream update action. The generic upstream Dockerfile and release workflow
+still use `BuildType=release`; they are not the Aino production release path.
+
+For each manual release, run the frontend and backend tests, embed the rebuilt
+frontend, build a commit-specific application image, and verify its checksum.
+Back up the database, application data, and deployment configuration before
+switching only the application service. Keep the previous image for operator-led
+rollback, pin images, and use `pull_policy: never`. Never change checksums of
+already-applied migrations or enable automatic upstream synchronization.
+
 ## Deployment Methods
 
 | Method | Best For | Setup Wizard |

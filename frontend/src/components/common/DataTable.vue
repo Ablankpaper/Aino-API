@@ -39,6 +39,7 @@
             class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
             :checked="allVisibleSelected"
             :indeterminate="someVisibleSelected"
+            :disabled="visibleRowKeys.length === 0"
             data-test="select-all-mobile"
             @change="toggleAllVisible(($event.target as HTMLInputElement).checked)"
           />
@@ -61,6 +62,7 @@
               type="checkbox"
               class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
               :checked="isRowSelected(row, index)"
+              :disabled="!isRowSelectable(row)"
               :aria-label="getRowSelectionLabel(row, index)"
               data-test="select-row"
               @click.stop
@@ -112,6 +114,7 @@
               class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
               :checked="allVisibleSelected"
               :indeterminate="someVisibleSelected"
+              :disabled="visibleRowKeys.length === 0"
               :aria-label="t('common.selectAll')"
               data-test="select-all"
               @change="toggleAllVisible(($event.target as HTMLInputElement).checked)"
@@ -225,6 +228,7 @@
                 type="checkbox"
                 class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
                 :checked="isRowSelected(item.row, item.index)"
+                :disabled="!isRowSelectable(item.row)"
                 :aria-label="getRowSelectionLabel(item.row, item.index)"
                 data-test="select-row"
                 @click.stop
@@ -467,6 +471,8 @@ interface Props {
   virtualizeThreshold?: number
   /** Enable controlled row selection. Stable row keys are strongly recommended. */
   selectable?: boolean
+  /** Exclude ineligible rows from individual and current-page selection. */
+  rowSelectable?: (row: any) => boolean
   /** Selected row keys. Keys outside the current data page are preserved. */
   selectedKeys?: Array<string | number>
   /** Accessible label for a row selection checkbox. */
@@ -706,8 +712,11 @@ const sortedData = computed(() => {
 
 const tableColumnCount = computed(() => props.columns.length + (props.selectable ? 1 : 0))
 const selectedKeySet = computed(() => new Set(props.selectedKeys))
+const isRowSelectable = (row: any) => props.rowSelectable?.(row) ?? true
 const visibleRowKeys = computed(() =>
-  (sortedData.value ?? []).map((row, index) => resolveRowKey(row, index))
+  (sortedData.value ?? []).flatMap((row, index) =>
+    isRowSelectable(row) ? [resolveRowKey(row, index)] : []
+  )
 )
 const allVisibleSelected = computed(() =>
   visibleRowKeys.value.length > 0
@@ -725,7 +734,7 @@ const emitSelection = (next: Set<string | number>) => {
 }
 
 const isRowSelected = (row: any, index: number) =>
-  selectedKeySet.value.has(resolveRowKey(row, index))
+  isRowSelectable(row) && selectedKeySet.value.has(resolveRowKey(row, index))
 
 const getRowSelectionLabel = (row: any, index: number) => {
   if (typeof props.selectionLabel === 'function') return props.selectionLabel(row)
@@ -734,6 +743,7 @@ const getRowSelectionLabel = (row: any, index: number) => {
 }
 
 const toggleRowSelection = (row: any, index: number, checked: boolean) => {
+  if (!isRowSelectable(row)) return
   const next = new Set(props.selectedKeys)
   const key = resolveRowKey(row, index)
   if (checked) next.add(key)

@@ -338,6 +338,40 @@ describe('DataTable', () => {
     viewport.remove()
   })
 
+  it.each(['desktop', 'mobile'])('excludes disabled rows from %s selection and select-all state', async (layout) => {
+    if (layout === 'mobile') stubMobileMatchMedia()
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: [{ key: 'name', label: 'Name' }],
+        data: [
+          { id: 1, name: 'Managed', managed: true },
+          { id: 2, name: 'Ordinary', managed: false }
+        ],
+        rowKey: 'id',
+        selectable: true,
+        rowSelectable: (row: { managed: boolean }) => !row.managed,
+        selectedKeys: []
+      }
+    })
+    const rows = wrapper.findAll<HTMLInputElement>('[data-test="select-row"]')
+    expect(rows[0].element.disabled).toBe(true)
+    expect(rows[1].element.disabled).toBe(false)
+    const all = wrapper.get<HTMLInputElement>(`[data-test="select-all${layout === 'mobile' ? '-mobile' : ''}"]`)
+    await all.setValue(true)
+    expect(wrapper.emitted('update:selectedKeys')?.at(-1)?.[0]).toEqual([2])
+    await wrapper.setProps({ selectedKeys: [2] })
+    expect(all.element.checked).toBe(true)
+    expect(all.element.indeterminate).toBe(false)
+    expect(rows[0].element.checked).toBe(false)
+    await all.setValue(false)
+    expect(wrapper.emitted('update:selectedKeys')?.at(-1)?.[0]).toEqual([])
+
+    await wrapper.setProps({ data: [{ id: 1, name: 'Managed', managed: true }], selectedKeys: [] })
+    expect(all.element.disabled).toBe(true)
+    expect(all.element.checked).toBe(false)
+    wrapper.unmount()
+  })
+
   it('offers current-page select all in the mobile card layout', async () => {
     stubMobileMatchMedia()
     const wrapper = mount(DataTable, {
