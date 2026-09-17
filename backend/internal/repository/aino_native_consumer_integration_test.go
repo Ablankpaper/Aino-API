@@ -22,9 +22,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	"github.com/Wei-Shaw/sub2api/internal/repository"
-	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,19 +54,8 @@ func TestAinoNativeConsumer(t *testing.T) {
 	r.modelProvider = protocol
 	r.wireModel(t, 0)
 	r.wirePayment(t)
-	// Same production handlers at their production paths, retaining JWT guards.
-	aliases := map[string]string{"/login/send": "/api/v1/auth/phone/send-code", "/login/verify": "/api/v1/auth/phone/verify", "/profile": "/api/v1/user/profile"}
-	for _, route := range r.router.Routes() {
-		if target, ok := aliases[route.Path]; ok {
-			handlers := []gin.HandlerFunc{route.HandlerFunc}
-			if route.Path == "/profile" {
-				handlers = append([]gin.HandlerFunc{gin.HandlerFunc(middleware.NewJWTAuthMiddleware(r.auth, r.users, r.settings, nil))}, handlers...)
-			}
-			r.router.Handle(route.Method, target, handlers...)
-		}
-	}
-	authHandler := handler.NewAuthHandler(&config.Config{}, r.auth, r.users, r.settings, nil, nil, nil, nil)
-	r.router.GET("/api/v1/auth/me", gin.HandlerFunc(middleware.NewJWTAuthMiddleware(r.auth, r.users, r.settings, nil)), authHandler.GetCurrentUser)
+	wireAinoNativeAccountRoutes(r)
+	faults := newAinoNativeFaults(t, r, nonce, protocol.shutdown)
 	// Real public settings projection with valid synthetic SMS deployment config;
 	// SMS dispatch itself is the existing captured sender, never Aliyun transport.
 	sms := config.SMSConfig{Enabled: true, Provider: "aliyun", AccessKeyID: "fixture-sms-id", AccessKeySecret: "fixture-sms-secret", HMACSecret: strings.Repeat("fixture-hmac", 4), RegionID: "cn-hangzhou", SignName: "fixture-sign", TemplateCode: "SMS_FIXTURE", TemplateParams: map[string]string{"code": "code", "minutes": "ttl_minutes"}, TemplateVerified: true, CodeLength: 6, TTLSeconds: 300, CooldownSeconds: 60, MaxAttempts: 5, PhoneHourLimit: 50, PhoneDayLimit: 50, IPHourLimit: 50, GlobalDayLimit: 1000, RequestTimeoutSeconds: 5}
@@ -240,7 +227,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 		w.WriteHeader(rec.Code)
 		_, _ = w.Write(body)
 	})
-	r.server = httptest.NewServer(native)
+	r.server = httptest.NewServer(faults.wrap(native))
 	registerNativeProtocolCleanup(t, protocol, r.server.Close)
 	manifest := map[string]string{"origin": r.server.URL, "nonce": nonce, "phone": phone, "run_id": r.runID, "fixture_path": fixturePath, "fixture_content": content}
 	blob, err := json.Marshal(manifest)
