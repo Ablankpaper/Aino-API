@@ -37,6 +37,8 @@ type ainoPlatformFixture struct {
 	modelCalls, paymentCalls atomic.Int64
 	modelProvider            http.Handler
 	modelGroupID             int64
+	gatewayBillingCache      *service.BillingCacheService
+	nativeInferenceObserver  gin.HandlerFunc
 }
 
 func newAinoPlatformFixture(t *testing.T) *ainoPlatformFixture {
@@ -167,12 +169,18 @@ func (r *ainoPlatformFixture) wireModel(t *testing.T, userID int64) {
 	concurrency := service.NewConcurrencyService(repository.NewConcurrencyCache(r.redis, 1, 60))
 	cache := service.NewBillingCacheService(nil, r.userRepo, r.subs, nil, nil, r.rates, cfg, nil)
 	t.Cleanup(cache.Stop)
+	r.gatewayBillingCache = cache
 	logs := repository.NewUsageLogRepository(r.client, db)
 	gateway := service.NewOpenAIGatewayService(accounts, logs, repository.NewUsageBillingRepository(r.client, db), r.userRepo, r.subs, r.rates, repository.NewGatewayCache(r.redis), cfg, nil, concurrency, r.billing, nil, cache, repository.NewHTTPUpstream(cfg), &service.DeferredService{}, nil, nil, r.pricing, nil, nil, r.settings, nil)
 	pool := service.NewUsageRecordWorkerPoolWithOptions(service.UsageRecordWorkerPoolOptions{WorkerCount: 1, QueueSize: 16})
 	t.Cleanup(pool.Stop)
 	h := handler.NewOpenAIGatewayHandler(gateway, concurrency, cache, r.keys, pool, nil, nil, nil, cfg)
-	r.router.POST("/v1/chat/completions", gin.HandlerFunc(middleware.NewAPIKeyAuthMiddleware(r.keys, nil, cfg)), middleware.GroupModelAllowlist(), h.ChatCompletions)
+	handlers := []gin.HandlerFunc{gin.HandlerFunc(middleware.NewAPIKeyAuthMiddleware(r.keys, nil, cfg)), middleware.GroupModelAllowlist()}
+	if r.nativeInferenceObserver != nil {
+		handlers = append(handlers, r.nativeInferenceObserver)
+	}
+	handlers = append(handlers, h.ChatCompletions)
+	r.router.POST("/v1/chat/completions", handlers...)
 	usage := handler.NewUsageHandler(service.NewUsageService(logs, r.userRepo, r.client, nil), r.keys, nil, r.settings)
 	r.router.GET("/api/v1/usage", gin.HandlerFunc(middleware.NewJWTAuthMiddleware(r.auth, r.users, r.settings, nil)), usage.List)
 }

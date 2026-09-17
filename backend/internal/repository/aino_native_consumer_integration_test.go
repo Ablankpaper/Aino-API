@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -46,16 +47,20 @@ func TestAinoNativeConsumer(t *testing.T) {
 	_, err = rand.Read(nonceBytes)
 	require.NoError(t, err)
 	nonce := hex.EncodeToString(nonceBytes)
-	phone := fmt.Sprintf("+86139%08d", time.Now().UnixNano()%100000000)
+	phoneSuffix := time.Now().UnixNano() % 99999999
+	phone := fmt.Sprintf("+86139%08d", phoneSuffix)
+	secondaryPhone := fmt.Sprintf("+86138%08d", (phoneSuffix+1)%100000000)
 	fixturePath := filepath.Join(dir, "fixture-read.txt")
 	content := "fixture-file-content-" + r.runID
 	require.NoError(t, os.WriteFile(fixturePath, []byte(content+"\n"), 0600))
 	protocol := &ainoNativeProtocol{rig: r, path: fixturePath, content: content, shutdown: make(chan struct{}), releaseTerminal: make(chan struct{})}
 	r.modelProvider = protocol
+	faults := newAinoNativeFaults(t, r, nonce, protocol.shutdown)
+	protocol.faults = faults
+	r.nativeInferenceObserver = faults.observeAuthenticatedInference
 	r.wireModel(t, 0)
 	r.wirePayment(t)
 	wireAinoNativeAccountRoutes(r)
-	faults := newAinoNativeFaults(t, r, nonce, protocol.shutdown)
 	// Real public settings projection with valid synthetic SMS deployment config;
 	// SMS dispatch itself is the existing captured sender, never Aliyun transport.
 	sms := config.SMSConfig{Enabled: true, Provider: "aliyun", AccessKeyID: "fixture-sms-id", AccessKeySecret: "fixture-sms-secret", HMACSecret: strings.Repeat("fixture-hmac", 4), RegionID: "cn-hangzhou", SignName: "fixture-sign", TemplateCode: "SMS_FIXTURE", TemplateParams: map[string]string{"code": "code", "minutes": "ttl_minutes"}, TemplateVerified: true, CodeLength: 6, TTLSeconds: 300, CooldownSeconds: 60, MaxAttempts: 5, PhoneHourLimit: 50, PhoneDayLimit: 50, IPHourLimit: 50, GlobalDayLimit: 1000, RequestTimeoutSeconds: 5}
@@ -63,7 +68,8 @@ func TestAinoNativeConsumer(t *testing.T) {
 	public := handler.NewSettingHandler(service.NewSettingService(r.settingRepo, &config.Config{SMS: sms}), "fixture")
 	r.router.GET("/api/v1/settings/public", public.GetPublicSettings)
 	var lock sync.Mutex
-	var userID int64
+	var firstUserID int64
+	users := make(map[int64]struct{})
 	secrets := []string{"fixture-upstream-key"}
 	completed := make(chan struct{})
 	var finish sync.Once
@@ -79,31 +85,67 @@ func TestAinoNativeConsumer(t *testing.T) {
 		case "/fixture/control/code":
 			_ = json.NewEncoder(w).Encode(map[string]string{"code": r.sender.latestCode()})
 		case "/fixture/control/state":
+			selectedUserID := firstUserID
+			if raw := req.URL.Query().Get("user_id"); raw != "" {
+				parsed, parseErr := strconv.ParseInt(raw, 10, 64)
+				if parseErr != nil || parsed <= 0 {
+					http.Error(w, "invalid fixture user", http.StatusBadRequest)
+					return
+				}
+				selectedUserID = parsed
+			}
+			if _, ok := users[selectedUserID]; !ok {
+				http.Error(w, "unknown fixture user", http.StatusNotFound)
+				return
+			}
 			var balance, cost string
 			var calls, turns, orders int
+			ledger := make([]map[string]any, 0)
 			db := repository.GetIntegrationDB()
-			if userID > 0 {
-				if err := db.QueryRowContext(r.ctx, "SELECT balance::text FROM users WHERE id=$1", userID).Scan(&balance); err != nil {
+			if selectedUserID > 0 {
+				if err := db.QueryRowContext(r.ctx, "SELECT balance::text FROM users WHERE id=$1", selectedUserID).Scan(&balance); err != nil {
 					http.Error(w, "balance query failed", 500)
 					return
 				}
-				if err := db.QueryRowContext(r.ctx, "SELECT count(*),count(distinct desktop_turn_id),coalesce(sum(actual_cost),0)::text FROM usage_logs WHERE user_id=$1 AND settlement_status='settled'", userID).Scan(&calls, &turns, &cost); err != nil {
+				if err := db.QueryRowContext(r.ctx, "SELECT count(*),count(distinct desktop_turn_id),coalesce(sum(actual_cost),0)::text FROM usage_logs WHERE user_id=$1 AND settlement_status='settled'", selectedUserID).Scan(&calls, &turns, &cost); err != nil {
 					http.Error(w, "usage query failed", 500)
 					return
 				}
-				if err := db.QueryRowContext(r.ctx, "SELECT count(*) FROM payment_orders WHERE user_id=$1", userID).Scan(&orders); err != nil {
+				if err := db.QueryRowContext(r.ctx, "SELECT count(*) FROM payment_orders WHERE user_id=$1", selectedUserID).Scan(&orders); err != nil {
 					http.Error(w, "order query failed", 500)
 					return
 				}
+				rows, queryErr := db.QueryContext(r.ctx, "SELECT user_id,api_key_id,coalesce(session_id,''),coalesce(desktop_turn_id,''),actual_cost::text FROM usage_logs WHERE user_id=$1 AND settlement_status='settled' ORDER BY id", selectedUserID)
+				if queryErr != nil {
+					http.Error(w, "usage ledger query failed", 500)
+					return
+				}
+				for rows.Next() {
+					var ledgerUserID, apiKeyID int64
+					var desktopSessionID, desktopTurnID, actualCost string
+					if scanErr := rows.Scan(&ledgerUserID, &apiKeyID, &desktopSessionID, &desktopTurnID, &actualCost); scanErr != nil {
+						_ = rows.Close()
+						http.Error(w, "usage ledger scan failed", 500)
+						return
+					}
+					ledger = append(ledger, map[string]any{"user_id": ledgerUserID, "api_key_id": apiKeyID, "desktop_session_id": desktopSessionID, "desktop_turn_id": desktopTurnID, "actual_cost": actualCost})
+				}
+				if rowsErr := rows.Err(); rowsErr != nil {
+					_ = rows.Close()
+					http.Error(w, "usage ledger iteration failed", 500)
+					return
+				}
+				_ = rows.Close()
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": userID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "tool_results": protocol.toolResults.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load(), "downstream_disconnects": protocol.downstreamDisconnects.Load(), "stream_drained": protocol.streamDrained.Load(), "stream_timeouts": protocol.streamTimeouts.Load(), "stream_shutdowns": protocol.streamShutdowns.Load()})
+			userFaults, _ := faults.userSnapshot(selectedUserID)
+			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": selectedUserID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "usage_ledger": ledger, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "credential_requests": userFaults.CredentialRequests, "credential_successes": userFaults.CredentialSuccesses, "inference_requests": userFaults.InferenceRequests, "inference_responses": userFaults.InferenceResponses, "tool_results": protocol.toolResults.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load(), "downstream_disconnects": protocol.downstreamDisconnects.Load(), "stream_drained": protocol.streamDrained.Load(), "stream_timeouts": protocol.streamTimeouts.Load(), "stream_shutdowns": protocol.streamShutdowns.Load()})
 		case "/fixture/control/pay":
-			if req.Method != "POST" || userID == 0 {
+			if req.Method != "POST" || firstUserID == 0 {
 				http.Error(w, "invalid control request", 400)
 				return
 			}
 			var outTradeNo, amount string
-			err := repository.GetIntegrationDB().QueryRowContext(r.ctx, "SELECT out_trade_no,pay_amount::text FROM payment_orders WHERE user_id=$1 ORDER BY id DESC LIMIT 1", userID).Scan(&outTradeNo, &amount)
+			err := repository.GetIntegrationDB().QueryRowContext(r.ctx, "SELECT out_trade_no,pay_amount::text FROM payment_orders WHERE user_id=$1 ORDER BY id DESC LIMIT 1", firstUserID).Scan(&outTradeNo, &amount)
 			if err != nil {
 				http.Error(w, "no fixture order", http.StatusConflict)
 				return
@@ -195,8 +237,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 					return
 				}
 				id := int64(idValue)
-				if userID == 0 {
-					userID = id
+				if _, exists := users[id]; !exists {
 					_, err = r.userRepo.SetBalance(r.ctx, id, 10)
 					if err == nil {
 						err = r.userRepo.AddGroupToAllowedGroups(r.ctx, id, r.modelGroupID)
@@ -205,6 +246,10 @@ func TestAinoNativeConsumer(t *testing.T) {
 						lock.Unlock()
 						http.Error(w, "fixture grant failed", 500)
 						return
+					}
+					users[id] = struct{}{}
+					if firstUserID == 0 {
+						firstUserID = id
 					}
 				}
 			}
@@ -229,7 +274,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 	})
 	r.server = httptest.NewServer(faults.wrap(native))
 	registerNativeProtocolCleanup(t, protocol, r.server.Close)
-	manifest := map[string]string{"origin": r.server.URL, "nonce": nonce, "phone": phone, "run_id": r.runID, "fixture_path": fixturePath, "fixture_content": content}
+	manifest := map[string]string{"origin": r.server.URL, "nonce": nonce, "phone": phone, "secondary_phone": secondaryPhone, "run_id": r.runID, "fixture_path": fixturePath, "fixture_content": content}
 	blob, err := json.Marshal(manifest)
 	require.NoError(t, err)
 	manifestPath := filepath.Join(dir, "manifest.json")

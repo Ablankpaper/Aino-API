@@ -23,6 +23,7 @@ import (
 // second request must carry its matching assistant call and actual file result.
 type ainoNativeProtocol struct {
 	rig                                         *ainoPlatformFixture
+	faults                                      *ainoNativeFaults
 	path, content                               string
 	shutdown, releaseTerminal                   chan struct{}
 	shutdownOnce, releaseTerminalOnce           sync.Once
@@ -150,6 +151,9 @@ func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	}
 	if !hasRead {
 		http.Error(w, "actual read_file tool definition missing", 400)
+		return
+	}
+	if p.faults != nil && p.faults.providerAttempt(w) {
 		return
 	}
 	call := p.rig.modelCalls.Add(1)
