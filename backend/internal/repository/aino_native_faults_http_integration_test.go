@@ -180,8 +180,11 @@ func (f *ainoNativeFaults) wrap(next http.Handler) http.Handler {
 			}
 		}
 		w.WriteHeader(rec.Code)
-		_, _ = w.Write(rec.Body.Bytes())
+		written, writeErr := w.Write(rec.Body.Bytes())
 		f.count(func(s *ainoNativeFaultSnapshot) {
+			if credential && rec.Code == http.StatusOK && writeErr == nil && written == rec.Body.Len() {
+				s.CredentialResponses++
+			}
 			if refresh {
 				s.RefreshResponses++
 			}

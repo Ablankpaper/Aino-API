@@ -43,6 +43,7 @@ type ainoNativeFaultSnapshot struct {
 	CredentialRequests             int64   `json:"credential_requests"`
 	CredentialSuccesses            int64   `json:"credential_successes"`
 	CredentialWaiting              int64   `json:"credential_waiting"`
+	CredentialResponses            int64   `json:"credential_responses"`
 	InferenceRequests              int64   `json:"inference_requests"`
 	InferenceWaiting               int64   `json:"inference_waiting"`
 	InferenceResponses             int64   `json:"inference_responses"`
