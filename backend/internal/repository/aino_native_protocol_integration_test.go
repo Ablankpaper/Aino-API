@@ -312,7 +312,20 @@ func isNativeCompressionRequest(messages []struct {
 	if json.Unmarshal(messages[0].Content, &content) != nil {
 		return false
 	}
-	return strings.HasPrefix(content, "You are a summarization agent creating a context checkpoint.")
+	const prefix = "You are a summarization agent creating a context checkpoint."
+	const marker = "TURNS TO SUMMARIZE:"
+	if !strings.HasPrefix(content, prefix) {
+		return false
+	}
+	markerAt := strings.Index(content[len(prefix):], marker)
+	if markerAt < 0 {
+		return false
+	}
+	context := content[len(prefix)+markerAt+len(marker):]
+	if boundary := strings.Index(context, "\n\nUse this exact structure:"); boundary >= 0 {
+		context = context[:boundary]
+	}
+	return strings.TrimSpace(context) != ""
 }
 
 func TestAinoNativeProtocolAcceptsCompressionSummaryRequest(t *testing.T) {
@@ -335,19 +348,28 @@ func TestAinoNativeProtocolAcceptsCompressionSummaryRequest(t *testing.T) {
 }
 
 func TestAinoNativeProtocolRejectsMalformedNoToolRequest(t *testing.T) {
-	protocol := &ainoNativeProtocol{rig: &ainoPlatformFixture{runID: "native-compression-malformed-test"}}
-	server := httptest.NewServer(protocol)
-	defer server.Close()
-	body := `{"model":"fixture-tool-model","stream":false,"messages":[{"role":"user","content":"ordinary chat without tools"}]}`
-	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(body))
-	require.NoError(t, err)
-	request.Header.Set("Authorization", "Bearer fixture-upstream-key")
-	request.Header.Set("Content-Type", "application/json")
-	response, err := http.DefaultClient.Do(request)
-	require.NoError(t, err)
-	defer response.Body.Close()
-	require.Equal(t, http.StatusBadRequest, response.StatusCode)
-	require.EqualValues(t, 0, protocol.compressionRequests.Load())
+	for name, content := range map[string]string{
+		"ordinary chat": "ordinary chat without tools",
+		"prefix only":   "You are a summarization agent creating a context checkpoint.",
+		"empty context": "You are a summarization agent creating a context checkpoint.\n\nTURNS TO SUMMARIZE:\n\nUse this exact structure:\nfixture template",
+	} {
+		t.Run(name, func(t *testing.T) {
+			protocol := &ainoNativeProtocol{rig: &ainoPlatformFixture{runID: "native-compression-malformed-test"}}
+			server := httptest.NewServer(protocol)
+			defer server.Close()
+			encoded, err := json.Marshal(map[string]any{"model": "fixture-tool-model", "stream": false, "messages": []any{map[string]any{"role": "user", "content": content}}})
+			require.NoError(t, err)
+			request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", bytes.NewReader(encoded))
+			require.NoError(t, err)
+			request.Header.Set("Authorization", "Bearer fixture-upstream-key")
+			request.Header.Set("Content-Type", "application/json")
+			response, err := http.DefaultClient.Do(request)
+			require.NoError(t, err)
+			defer response.Body.Close()
+			require.Equal(t, http.StatusBadRequest, response.StatusCode)
+			require.EqualValues(t, 0, protocol.compressionRequests.Load())
+		})
+	}
 }
 
 func TestAinoNativeProtocolShutdownDoesNotCountAsCancellation(t *testing.T) {
