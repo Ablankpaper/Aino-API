@@ -32,6 +32,8 @@ type ainoNativeProtocol struct {
 	downstreamDisconnects, streamDrained        atomic.Int64
 	streamTimeouts                              atomic.Int64
 	streamShutdowns                             atomic.Int64
+	compressionRequests                         atomic.Int64
+	compressionHandoffRequests                  atomic.Int64
 }
 
 func (p *ainoNativeProtocol) closeActiveStream() {
@@ -140,6 +142,43 @@ func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	}
 	if json.NewDecoder(req.Body).Decode(&body) != nil || body.Model != "fixture-tool-model" || len(body.Messages) == 0 {
 		http.Error(w, "invalid native fixture protocol", 400)
+		return
+	}
+	for _, msg := range body.Messages {
+		if strings.Contains(string(msg.Content), "CONTEXT COMPACTION") {
+			p.compressionHandoffRequests.Add(1)
+		}
+	}
+	if len(body.Tools) == 0 {
+		if !isNativeCompressionRequest(body.Messages) {
+			http.Error(w, "unknown no-tool native fixture request", 400)
+			return
+		}
+		p.compressionRequests.Add(1)
+		call := p.rig.modelCalls.Add(1)
+		message := map[string]any{"role": "assistant", "content": "## Historical Task\nNative compression fixture handoff preserved the prior tool turns.\n\n## Active State\nThe resumed native chat remains bound to the same billing session."}
+		usage := map[string]int{"prompt_tokens": 18, "completion_tokens": 8, "total_tokens": 26}
+		w.Header().Set("x-request-id", fmt.Sprintf("fixture-%s-%d", p.rig.runID, call))
+		if !body.Stream {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": fmt.Sprintf("fixture-%d", call), "object": "chat.completion", "created": time.Now().Unix(), "model": body.Model, "choices": []any{map[string]any{"index": 0, "message": message, "finish_reason": "stop"}}, "usage": usage})
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "fixture streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+		emit := func(delta map[string]any, reason any, counts any) {
+			blob, _ := json.Marshal(map[string]any{"id": fmt.Sprintf("fixture-%d", call), "object": "chat.completion.chunk", "created": time.Now().Unix(), "model": body.Model, "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": reason}}, "usage": counts})
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", blob)
+			flusher.Flush()
+		}
+		emit(message, nil, nil)
+		emit(map[string]any{}, "stop", usage)
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
+		flusher.Flush()
 		return
 	}
 	hasRead := false
@@ -252,6 +291,63 @@ func (p *ainoNativeProtocol) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	if cancel {
 		p.streamDrained.Add(1)
 	}
+}
+
+func isNativeCompressionRequest(messages []struct {
+	Role       string          `json:"role"`
+	Content    json.RawMessage `json:"content"`
+	ToolCallID string          `json:"tool_call_id"`
+	ToolCalls  []struct {
+		ID       string `json:"id"`
+		Function struct {
+			Name      string `json:"name"`
+			Arguments string `json:"arguments"`
+		} `json:"function"`
+	} `json:"tool_calls"`
+}) bool {
+	if len(messages) != 1 || messages[0].Role != "user" {
+		return false
+	}
+	var content string
+	if json.Unmarshal(messages[0].Content, &content) != nil {
+		return false
+	}
+	return strings.HasPrefix(content, "You are a summarization agent creating a context checkpoint.")
+}
+
+func TestAinoNativeProtocolAcceptsCompressionSummaryRequest(t *testing.T) {
+	protocol := &ainoNativeProtocol{rig: &ainoPlatformFixture{runID: "native-compression-test"}}
+	server := httptest.NewServer(protocol)
+	defer server.Close()
+	body := `{"model":"fixture-tool-model","stream":false,"messages":[{"role":"user","content":"You are a summarization agent creating a context checkpoint. TURNS TO SUMMARIZE: fixture context"}]}`
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(body))
+	require.NoError(t, err)
+	request.Header.Set("Authorization", "Bearer fixture-upstream-key")
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	data, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Contains(t, string(data), "Native compression fixture handoff")
+	require.EqualValues(t, 1, protocol.compressionRequests.Load())
+}
+
+func TestAinoNativeProtocolRejectsMalformedNoToolRequest(t *testing.T) {
+	protocol := &ainoNativeProtocol{rig: &ainoPlatformFixture{runID: "native-compression-malformed-test"}}
+	server := httptest.NewServer(protocol)
+	defer server.Close()
+	body := `{"model":"fixture-tool-model","stream":false,"messages":[{"role":"user","content":"ordinary chat without tools"}]}`
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat/completions", strings.NewReader(body))
+	require.NoError(t, err)
+	request.Header.Set("Authorization", "Bearer fixture-upstream-key")
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+	require.EqualValues(t, 0, protocol.compressionRequests.Load())
 }
 
 func TestAinoNativeProtocolShutdownDoesNotCountAsCancellation(t *testing.T) {

@@ -115,20 +115,20 @@ func TestAinoNativeConsumer(t *testing.T) {
 					http.Error(w, "order query failed", 500)
 					return
 				}
-				rows, queryErr := db.QueryContext(r.ctx, "SELECT user_id,api_key_id,coalesce(session_id,''),coalesce(desktop_turn_id,''),actual_cost::text FROM usage_logs WHERE user_id=$1 AND settlement_status='settled' ORDER BY id", selectedUserID)
+				rows, queryErr := db.QueryContext(r.ctx, "SELECT user_id,api_key_id,coalesce(session_id,''),coalesce(desktop_turn_id,''),coalesce(desktop_call_id,''),coalesce(desktop_purpose,''),actual_cost::text FROM usage_logs WHERE user_id=$1 AND settlement_status='settled' ORDER BY id", selectedUserID)
 				if queryErr != nil {
 					http.Error(w, "usage ledger query failed", 500)
 					return
 				}
 				for rows.Next() {
 					var ledgerUserID, apiKeyID int64
-					var desktopSessionID, desktopTurnID, actualCost string
-					if scanErr := rows.Scan(&ledgerUserID, &apiKeyID, &desktopSessionID, &desktopTurnID, &actualCost); scanErr != nil {
+					var desktopSessionID, desktopTurnID, desktopCallID, desktopPurpose, actualCost string
+					if scanErr := rows.Scan(&ledgerUserID, &apiKeyID, &desktopSessionID, &desktopTurnID, &desktopCallID, &desktopPurpose, &actualCost); scanErr != nil {
 						_ = rows.Close()
 						http.Error(w, "usage ledger scan failed", 500)
 						return
 					}
-					ledger = append(ledger, map[string]any{"user_id": ledgerUserID, "api_key_id": apiKeyID, "desktop_session_id": desktopSessionID, "desktop_turn_id": desktopTurnID, "actual_cost": actualCost})
+					ledger = append(ledger, map[string]any{"user_id": ledgerUserID, "api_key_id": apiKeyID, "desktop_session_id": desktopSessionID, "desktop_turn_id": desktopTurnID, "desktop_call_id": desktopCallID, "desktop_purpose": desktopPurpose, "actual_cost": actualCost})
 				}
 				if rowsErr := rows.Err(); rowsErr != nil {
 					_ = rows.Close()
@@ -138,7 +138,7 @@ func TestAinoNativeConsumer(t *testing.T) {
 				_ = rows.Close()
 			}
 			userFaults, _ := faults.userSnapshot(selectedUserID)
-			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": selectedUserID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "usage_ledger": ledger, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "credential_requests": userFaults.CredentialRequests, "credential_successes": userFaults.CredentialSuccesses, "inference_requests": userFaults.InferenceRequests, "inference_responses": userFaults.InferenceResponses, "tool_results": protocol.toolResults.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load(), "downstream_disconnects": protocol.downstreamDisconnects.Load(), "stream_drained": protocol.streamDrained.Load(), "stream_timeouts": protocol.streamTimeouts.Load(), "stream_shutdowns": protocol.streamShutdowns.Load()})
+			_ = json.NewEncoder(w).Encode(map[string]any{"run_id": r.runID, "user_id": selectedUserID, "balance": balance, "usage_cost": cost, "usage_calls": calls, "usage_turns": turns, "usage_ledger": ledger, "orders": orders, "model_calls": r.modelCalls.Load(), "payment_calls": r.paymentCalls.Load(), "credential_requests": userFaults.CredentialRequests, "credential_successes": userFaults.CredentialSuccesses, "inference_requests": userFaults.InferenceRequests, "inference_responses": userFaults.InferenceResponses, "tool_results": protocol.toolResults.Load(), "compression_requests": protocol.compressionRequests.Load(), "compression_handoff_requests": protocol.compressionHandoffRequests.Load(), "stream_started": protocol.streamStarted.Load(), "stream_cancelled": protocol.streamCancelled.Load(), "downstream_disconnects": protocol.downstreamDisconnects.Load(), "stream_drained": protocol.streamDrained.Load(), "stream_timeouts": protocol.streamTimeouts.Load(), "stream_shutdowns": protocol.streamShutdowns.Load()})
 		case "/fixture/control/pay":
 			if req.Method != "POST" || firstUserID == 0 {
 				http.Error(w, "invalid control request", 400)
